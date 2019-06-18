@@ -1,0 +1,5 @@
+\documentclass{jsarticle}
+\usepackage[dvipdfmx]{graphicx}
+\usepackage{grffile}
+\usepackage[top=0truemm,bottom=0truemm,left=0truemm,right=0truemm]{geometry}
+\begin{document}
