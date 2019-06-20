@@ -2,21 +2,31 @@
 umask 000
 clear
 
-#Setting
-cgn_ctrl=(lia olia wvegas) # lia olia balia wvegas cubic reno
-rtt1=(5 50 200)
-rtt2=(5 50 200)   
-loss=(0)
-queue=(100 1000 20000) #0 1 10 50 100 500 1000 2000 20000
-duration=10
-sleep=0.5 #time[s]
-repeat=1
-app=3
+# User Setting 
+
+cgn_ctrl=(lia)          # congestion control e.g. lia olia balia wvegas cubic reno
+rtt1=(50)               # delay of netem [ms]
+rtt2=(50)               
+loss=(0)                # Packet drop rate of netem [%]
+queue=(100 1000 20000)  # The number of IFQ size [packet]
+duration=100            # Communication Time [s]
+app_delay=0.5           # Time of start time difference [s]
+repeat=1                # The number of repeat
+app=3                   # The number of Application (iperf)
+qdisc=pfifo_fast        # AQM (Active queue management) e.g. pfifo_fast red fq_codel
+memo=$1
+
+
+# Kernel variable
+
 no_cwr=0
 no_rcv=0
-no_small_queue=0
-qdisc=fifo # red pfifo_fast
-memo=$1
+no_small_queue=1 #0:default 1:original
+change_small_queue=10 #default:10
+
+
+
+
 
 
 kernel=$(uname -r)
@@ -60,7 +70,6 @@ fi
 #fixed
 
 interval=1
-thresh=180 #?
 i=1
 j=0
 k=0
@@ -68,10 +77,6 @@ l=0
 m=0
 z=0
 temp=0
-a1=0																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																													
-a2=0
-il=100
-el=100000
 
 app_i=1
 
@@ -88,14 +93,13 @@ clearpage=0
 #reciver setting
 reciever_dir="/home/yokolabo/experiment"
 
-###
 
 
 cwd=`dirname $0`
 cd $cwd
 
+
 today=$(date "+%Y%m%d_%H-%M-%S")
-kernel=$(uname -r)
 rcvkernel=$(ssh root@${reciever_ip} 'uname -r')
 nowdir=$today
 mkdir ${today}
@@ -136,6 +140,7 @@ echo "----------------------------------------------"
 
 #sysctl net.core.default_qdisc=${qdisc}
 sysctl net.mptcp.mptcp_no_small_queue=${no_small_queue}
+sysctl net.mptcp.mptcp_change_small_queue=${change_small_queue}
 sysctl net.mptcp.mptcp_debug=1
 sysctl net.mptcp.mptcp_enabled=1
 sysctl net.mptcp.mptcp_no_cwr=${no_cwr}
@@ -150,7 +155,7 @@ ip link set dev ${eth0} multipath on
 ip link set dev ${eth1} multipath on
 
 #ethtool -s ${eth0} speed ${band1} duplex full
-#Sethtool -s ${eth1} speed ${band2} duplex full
+#ethtool -s ${eth1} speed ${band2} duplex full
 
 
 
@@ -174,10 +179,8 @@ clearpage=0
 
 			while [ $l -lt ${#loss[@]} ]
 			do
-				
 				ssh root@${D1_ip} "./tc.sh 0 `expr ${rtt1[$j]} / 2` 0 && ./tc.sh 1 `expr ${rtt1[$j]} / 2` ${loss[$l]}" > /dev/null
 				ssh root@${D2_ip} "./tc.sh 0 `expr ${rtt2[$m]} / 2` 0 && ./tc.sh 1 `expr ${rtt2[$m]} / 2` ${loss[$l]}" > /dev/null
-				
 				if [ $j != $m ]; then
 					break
 					
@@ -190,7 +193,15 @@ clearpage=0
 
 					ifconfig ${eth0} txqueuelen ${queue[$k]}
 					ifconfig ${eth1} txqueuelen ${queue[$k]}
-					sysctl net.ipv4.tcp_limit_output_bytes=$(( 262144 * queue[$k]/ 20000))
+					limitsize=$(( 1300 * queue[$k] ))
+					halfsize=1300
+					#maxsize=$(( 10 * limitsize / queue[$k]))
+					#maxsize=$(( limitsize * 1 / 5))
+					#halfsize=$(( limitsize / queue[$k]))
+					#burst=$((halfsize / 1000 + 1))
+					#tc qdisc replace dev eth0 root red limit $limitsize min $halfsize max $maxsize avpkt 1000 burst $burst 
+					#tc qdisc replace dev eth1 root red limit $limitsize min $halfsize max $maxsize avpkt 1000 burst $burst
+					#sysctl net.ipv4.tcp_limit_output_bytes=$(( 262144 * queue[$k]/20000 * 5 / 2 / rtt1[$j] ))
 					#sysctl net.ipv4.tcp_limit_output_bytes=262144
 					nowdir=${cgn_ctrl[$z]}_rtt1=${rtt1[$j]}_rtt2=${rtt2[$m]}_loss=${loss[$l]}_queue=${queue[$k]}
 					mkdir ${nowdir}
@@ -207,21 +218,20 @@ clearpage=0
 
 
 						ssh root@${reciever_ip} "sysctl net.mptcp.mptcp_debug=1" > /dev/null
-						#ssh root@${reciever_ip} "cd ${reciever_dir} && umask 000 && mkdir ${today} && umask 022"
-
 						echo "${cgn_ctrl[$z]}_RTT1=${rtt1[$j]}ms, RTT2=${rtt2[$m]}ms, LOSS=${loss[$l]}, queue=${queue[$k]}pkt, ${i}回目"
-						
 
+                        # Clear kern.log of Sender and Receiver
 						ssh root@${reciever_ip} "echo > /var/log/kern.log" > /dev/null
 						echo > /var/log/kern.log
 						find /var/log/ -type f -name \* -exec cp -f /dev/null {} \;
-						sleep 0.5
+						
+                        sleep 0.5
 						while [ $app_i -le $app ]
 						do
 							
-							delay=`echo "scale=5; $duration + ($app - $app_i) * $sleep " | bc`
+							delay=`echo "scale=5; $duration + ($app - $app_i) * $app_delay " | bc`
 			
-							if [ $app_i = $app ]; then
+							if [ $app_i = $app ]; then  # When final app launch
 								
 								iperf -c ${reciever_ip} -t $delay -i $interval > ./${nowdir}/${i}th/throughput/app${app_i}.dat
 								#scp yokolabo@${reciever_ip}:/home/yokolabo/Desktop/dummy.dat ~/Desktop
@@ -231,7 +241,7 @@ clearpage=0
 								iperf -c ${reciever_ip} -t $delay -i $interval > ./${nowdir}/${i}th/throughput/app${app_i}.dat &
 								#scp yokolabo@${reciever_ip}:/home/yokolabo/Desktop/dummy.dat ~/Desktop/dummy${app_i}.dat &
 
-								sleep $sleep
+								sleep $app_delay
 							fi
 							
 							app_i=`expr $app_i + 1`
@@ -345,7 +355,7 @@ do
 	echo "\verb|reciever_kernel| & \verb|${rcvkernel}| \\\\" >> ./tex_header.txt
 	echo "mptcp version & ${mptcp_ver} \\\\" >> ./tex_header.txt
 	echo "other cgnctrl & ${cgn_ctrl[@]}\\\\" >> ./tex_header.txt
-	echo "qdisc & ${qdisc}\\\\" >> ./tex_header.txt
+	echo "qdisc & \verb|${qdisc}|\\\\" >> ./tex_header.txt
 	echo "app & ${app}\\\\" >> ./tex_header.txt
 	echo "rtt1 & ${rtt1[@]}\\\\" >> ./tex_header.txt
 	echo "rtt2 & ${rtt2[@]}\\\\" >> ./tex_header.txt
