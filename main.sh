@@ -2,6 +2,14 @@
 umask 000
 clear
 
+cwd=`dirname $0`
+cd $cwd
+if [ -e "function.sh" ]; then
+    source "function.sh"
+else
+    echo "function.sh does not exist."
+fi
+
 # User Setting 
 
 cgn_ctrl=(lia)          # congestion control e.g. lia olia balia wvegas cubic reno
@@ -26,45 +34,12 @@ change_small_queue=10 #default:10
 
 
 
-
-
-
 kernel=$(uname -r)
+mptcp_ver=$(get_mptcp_version)
+configure_ip_address mptcp_ver
 
-case "$kernel" in
-	"3.5.7" ) mptcp_ver=0.86 ;;
-	"3.10.17" ) mptcp_ver=0.87 ;;
-	"3.11.10" ) mptcp_ver=0.88 ;;
-	"3.14.33" ) mptcp_ver=0.89 ;;
-	"3.18.43" ) mptcp_ver=0.90 ;;
-	"4.1.39" ) mptcp_ver=0.91 ;;
-	"4.4.88" ) mptcp_ver=0.92 ;;
-	* ) mptcp_ver=unknown ;;
-esac
 
-if [ $mptcp_ver = 0.92 ]; then
-	reciever_ip=192.168.15.2
-	D1_ip=192.168.3.2
-	D2_ip=192.168.4.2
-	eth0=eth0
-	eth1=eth1
-	make_tex=1 #true : 1 , false : 0
-elif [ $mptcp_ver = 0.86 ]; then
-	reciever_ip=192.168.13.1
-	D1_ip=192.168.3.2
-	D2_ip=192.168.4.2
-	eth0=eth0
-	eth1=eth1
-	make_tex=1 #true : 1 , false : 0
-	no_small_queue=1
-else
-	reciever_ip=192.168.13.1
-	D1_ip=192.168.3.2
-	D2_ip=192.168.4.2
-	eth0=eth0
-	eth1=eth1
-	make_tex=1 #true : 1 , false : 0
-fi 
+exit
 
 
 #fixed
@@ -91,16 +66,14 @@ clearpage=0
 
 
 #reciver setting
-reciever_dir="/home/yokolabo/experiment"
+receiver_dir="/home/yokolabo/experiment"
 
 
 
-cwd=`dirname $0`
-cd $cwd
 
 
 today=$(date "+%Y%m%d_%H-%M-%S")
-rcvkernel=$(ssh root@${reciever_ip} 'uname -r')
+rcvkernel=$(ssh root@${receiver_ip} 'uname -r')
 nowdir=$today
 mkdir ${today}
 cd ${today}
@@ -110,27 +83,8 @@ time=`echo "scale=5; ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} 
 date
 date --date "$time seconds"
 
-echo "Date ${today}" > setting.txt
-echo "sender_kernel ${kernel}" >> setting.txt
-echo "reciever_kernel ${rcvkernel}" >> setting.txt
-echo "mptcp_ver ${mptcp_ver}" >> setting.txt
-echo "conguestion_control ${cgn_ctrl[@]}" >> setting.txt
-echo "qdisc ${qdisc}" >> setting.txt
-echo "app ${app}" >> setting.txt
-echo "rtt1 ${rtt1[@]}" >> setting.txt
-echo "rtt2 ${rtt2[@]}" >> setting.txt
-echo "loss ${loss[@]}" >> setting.txt
-echo "queue ${queue[@]}" >> setting.txt
-echo "duration ${duration}" >> setting.txt
-echo "sleep ${sleep}" >> setting.txt
-echo "repeat ${repeat}" >> setting.txt
-echo "interval ${interval}" >> setting.txt
-echo "no_cwr ${no_cwr}" >> setting.txt
-echo "no_rcv ${no_rcv}" >> setting.txt
-echo "no_small_queue ${no_small_queue}" >> setting.txt
-echo "qdisc ${qdisc}" >> setting.txt
-echo "num_subflow ${num_subflow}" >> setting.txt
-echo "memo ${memo}" >> setting.txt
+create_setting_file
+
 
 echo "------SETTING---------------------------------"
 cat setting.txt
@@ -217,11 +171,11 @@ clearpage=0
 						mkdir ${nowdir}/${i}th/throughput
 
 
-						ssh root@${reciever_ip} "sysctl net.mptcp.mptcp_debug=1" > /dev/null
+						ssh root@${receiver_ip} "sysctl net.mptcp.mptcp_debug=1" > /dev/null
 						echo "${cgn_ctrl[$z]}_RTT1=${rtt1[$j]}ms, RTT2=${rtt2[$m]}ms, LOSS=${loss[$l]}, queue=${queue[$k]}pkt, ${i}回目"
 
                         # Clear kern.log of Sender and Receiver
-						ssh root@${reciever_ip} "echo > /var/log/kern.log" > /dev/null
+						ssh root@${receiver_ip} "echo > /var/log/kern.log" > /dev/null
 						echo > /var/log/kern.log
 						find /var/log/ -type f -name \* -exec cp -f /dev/null {} \;
 						
@@ -233,13 +187,13 @@ clearpage=0
 			
 							if [ $app_i = $app ]; then  # When final app launch
 								
-								iperf -c ${reciever_ip} -t $delay -i $interval > ./${nowdir}/${i}th/throughput/app${app_i}.dat
-								#scp yokolabo@${reciever_ip}:/home/yokolabo/Desktop/dummy.dat ~/Desktop
+								iperf -c ${receiver_ip} -t $delay -i $interval > ./${nowdir}/${i}th/throughput/app${app_i}.dat
+								#scp yokolabo@${receiver_ip}:/home/yokolabo/Desktop/dummy.dat ~/Desktop
 
 							else
 								
-								iperf -c ${reciever_ip} -t $delay -i $interval > ./${nowdir}/${i}th/throughput/app${app_i}.dat &
-								#scp yokolabo@${reciever_ip}:/home/yokolabo/Desktop/dummy.dat ~/Desktop/dummy${app_i}.dat &
+								iperf -c ${receiver_ip} -t $delay -i $interval > ./${nowdir}/${i}th/throughput/app${app_i}.dat &
+								#scp yokolabo@${receiver_ip}:/home/yokolabo/Desktop/dummy.dat ~/Desktop/dummy${app_i}.dat &
 
 								sleep $app_delay
 							fi
@@ -251,9 +205,9 @@ clearpage=0
 						killall iperf &> /dev/null
 						sleep 10
 						
-						#reciever
-						ssh root@${reciever_ip} "sysctl net.mptcp.mptcp_debug=0" > /dev/null
-						##ssh root@${reciever_ip} "cd ${reciever_dir}/ && ./reciever_exp.sh ${today}"
+						#receiver
+						ssh root@${receiver_ip} "sysctl net.mptcp.mptcp_debug=0" > /dev/null
+						##ssh root@${receiver_ip} "cd ${reciever_dir}/ && ./reciever_exp.sh ${today}"
 						
 
 						awk '{if(NF<1){next;}if(length($6)!=1){time=substr($6, 2, length($6)-1);flg=0}else{time=substr($7, 1, length($7)-1);flg=1};if(NR==2){f_time=time;} printf time-f_time" ";for(i=7+flg; i<=NF; i++){printf $i" "}print ""}' /var/log/kern.log > ./${nowdir}/${i}th/log/kern.dat
@@ -316,7 +270,7 @@ do
 	echo "\begin{tabular}{ll}" >> ./tex_header.txt
 	echo "date & \verb|${today}| \\\\" >> ./tex_header.txt
 	echo "\verb|sender_kernel| & \verb|${kernel}| \\\\" >> ./tex_header.txt
-	echo "\verb|reciever_kernel| & \verb|${rcvkernel}| \\\\" >> ./tex_header.txt
+	echo "\verb|receiver_kernel| & \verb|${rcvkernel}| \\\\" >> ./tex_header.txt
 	echo "mptcp version & ${mptcp_ver} \\\\" >> ./tex_header.txt
 	echo "other cgnctrl & ${cgn_ctrl[@]} \\\\" >> ./tex_header.txt
 	echo "qdisc & ${qdisc}\\\\" >> ./tex_header.txt
@@ -352,7 +306,7 @@ do
 	echo "\begin{tabular}{ll}" >> ./tex_header.txt
 	echo "date & \verb|${today}| \\\\" >> ./tex_header.txt
 	echo "\verb|sender_kernel| & \verb|${kernel}| \\\\" >> ./tex_header.txt
-	echo "\verb|reciever_kernel| & \verb|${rcvkernel}| \\\\" >> ./tex_header.txt
+	echo "\verb|receiver_kernel| & \verb|${rcvkernel}| \\\\" >> ./tex_header.txt
 	echo "mptcp version & ${mptcp_ver} \\\\" >> ./tex_header.txt
 	echo "other cgnctrl & ${cgn_ctrl[@]}\\\\" >> ./tex_header.txt
 	echo "qdisc & \verb|${qdisc}|\\\\" >> ./tex_header.txt
