@@ -163,7 +163,7 @@ clearpage=0
 						ssh root@${receiver_ip} "sysctl net.mptcp.mptcp_debug=0" > /dev/null
 						##ssh root@${receiver_ip} "cd ${reciever_dir}/ && ./reciever_exp.sh ${today}"
 						format_and_copy_log
-
+						
 						
 						../awk.sh ${today}/${nowdir}/${i}th ${app} ${num_subflow}
 						../count_cwr.sh ${today} ${nowdir} ${i} ${app} ${num_subflow}

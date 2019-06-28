@@ -49,7 +49,6 @@ function configure_ip_address(){
 }
 
 function create_setting_file {
-
     
     echo "Date ${today}" > setting.txt
     echo "sender_kernel ${kernel}" >> setting.txt
