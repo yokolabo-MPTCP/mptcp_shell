@@ -154,7 +154,181 @@ function format_and_copy_log {
             printf $i" "
         }
         print ""
-    }' ./debug_log/kern.log > ./debug_log/kern.dat
-    #}' /var/log/kern.log > ./${nowdir}/${i}th/log/kern.dat
+    }' /var/log/kern.log > ./${nowdir}/${i}th/log/kern.dat
     
+}
+
+function separate_cwnd {
+     awk '{
+    if($11 ~ "cwnd="){
+        if(NF == 18){
+            printf("%s %s %s %s %s %s %s %s %s",$1,$5,$6,$8,$9,$11,$12,$17,$18)
+        }else if(NF == 13){
+            printf("%s %s %s %s %s %s %s %s",$1,$5,$6,$8,$9,$11,$12,$13)
+        }else{
+            printf("%s %s %s %s %s %s %s %s %s %s",$1,$5,$6,$8,$9,$11,$12,$17,$18,$19)
+        }
+        
+    }else if($10 ~ "cwnd="){
+	    if(NF == 18){
+            printf("%s %s %s %s %s %s %s %s %s %s",$1,$4,$5,$7,$8,$10,$11,$16,$17,$18)
+        }
+
+    }else{
+        next
+    }
+    print ""
+    }' ./log/kern.dat > ./log/cwnd.dat
+}
+
+function get_app_meta {
+    local app_i
+    awk '{
+        if($5 ~ "meta="){
+            array[$6]++   
+        }
+    }END{
+        for(i in array){
+            printf("%s %d\n",i,array[i])
+        }    
+    }' ./log/kern.dat > ./log/app.dat
+
+    sort -k2nr ./log/app.dat > ./log/app_sort.dat
+    mv ./log/app_sort.dat ./log/app.dat
+
+    #上からappの数だけ取り出す
+    awk -v app=${app} '{
+        if(FNR <= app){
+            print $0
+        }
+    }' ./log/app.dat > ./log/app_num_order.dat
+
+
+    for app_i in `seq ${app}` 
+    do
+        app[$app_i]=$(awk -v n=${app_i} '{
+            if(NR==n){
+                print $1
+            }    
+        }' ./log/app_num_order.dat)
+
+    done
+
+    # 時間順に並べ替える
+    echo -n > ./log/app_time_order.dat
+    for app_i in `seq ${app}` 
+    do
+        awk -v meta=${app[$app_i]} '{
+            if($3 == meta){
+                printf("%s %s\n",$3,$1);
+                exit;
+             }
+        }' ./log/cwnd.dat >> ./log/app_time_order.dat
+    done
+
+    sort -k2g ./log/app_time_order.dat > ./log/app_sort.dat
+    mv ./log/app_sort.dat ./log/app_time_order.dat
+
+    awk -v app=${app} '{
+        if(FNR <= app){
+            print $1
+        }
+    }' ./log/app_time_order.dat > ./log/app_exp.dat
+
+    for app_i in `seq ${app}` 
+    do
+        app_meta[$app_i]=$(awk -v n=${app_i} '{
+            if(NR==n){
+                print $1
+            }    
+        }' ./log/app_exp.dat)
+
+    done
+
+}
+
+function extract_cwnd_each_flow {
+    local app_i 
+    for app_i in `seq ${app}` 
+    do
+        awk -v meta=${app_meta[$app_i]} '{
+            if(meta==$3){
+                print $0
+            }
+        }' ./log/cwnd.dat > ./log/cwnd${app_i}.dat
+        
+
+        awk '{
+            if($4 ~ "pi="){
+                array[$5]++   
+            }
+            }END{
+            for(i in array){
+                printf("%s %d\n",i,array[i])
+            }    
+        }' ./log/cwnd${app_i}.dat > ./log/app${app_i}_subflow.dat
+
+        sort -k2nr ./log/app${app_i}_subflow.dat > ./log/app${app_i}_subflow_sort.dat
+        mv ./log/app${app_i}_subflow_sort.dat ./log/app${app_i}_subflow.dat
+
+    done
+
+
+    for app_i in `seq ${app}` 
+    do
+        for subflow_i in `seq ${subflownum}` 
+        do
+            subflowid=$(awk -v n=${subflow_i} '{
+                if(NR==n){
+                    print $1
+                }    
+            }' ./log/app${app_i}_subflow.dat)
+
+            awk -v subf=${subflowid} '{
+                if(subf==$5){
+                    print $0
+                }
+            }' ./log/cwnd${app_i}.dat > ./log/cwnd${app_i}_subflow${subflow_i}.dat
+        done
+    done
+
+   
+}
+
+function split_log {
+    local cgn_ctrl_var  
+    local rtt1_var  
+    local rtt2_var  
+    local queue_var  
+    local repeat_i 
+    local targetdir
+    local app_meta=()
+    cd $today
+    for cgn_ctrl_var in "${cgn_ctrl[@]}" 
+    do
+        for rtt1_var in "${rtt1[@]}"
+        do
+            for rtt2_var in "${rtt2[@]}"
+            do
+                for loss_var in "${loss[@]}"
+                do
+                    for queue_var in "${queue[@]}"
+                    do
+                        for repeat_i in `seq ${repeat}` 
+                        do
+                            targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
+                            echo $targetdir
+                            cd $targetdir
+                            separate_cwnd
+                            get_app_meta
+                            extract_cwnd_each_flow
+                        done 
+                    done    
+                done
+            done
+        done
+    done
+
+
+
 }

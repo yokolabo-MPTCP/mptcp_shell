@@ -210,6 +210,7 @@ clearpage=0
 	z=`expr $z + 1`
 done
 
+split_log
 
 z=0
 while [ $z -lt ${#cgn_ctrl[@]} ]
