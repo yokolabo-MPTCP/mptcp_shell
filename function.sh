@@ -48,7 +48,7 @@ function configure_ip_address(){
 
 }
 
-function create_setting_file{
+function create_setting_file {
 
     
     echo "Date ${today}" > setting.txt
@@ -74,4 +74,88 @@ function create_setting_file{
     echo "memo ${memo}" >> setting.txt
 
 
+}
+
+function set_kernel_variable {
+    sysctl net.mptcp.mptcp_debug=1
+    sysctl net.mptcp.mptcp_enabled=1
+    #sysctl net.core.default_qdisc=${qdisc}
+    sysctl net.mptcp.mptcp_no_small_queue=${no_small_queue}
+    sysctl net.mptcp.mptcp_change_small_queue=${change_small_queue}
+    sysctl net.mptcp.mptcp_no_cwr=${no_cwr}
+    if [ $mptcp_ver = 0.86 ]; then
+        sysctl net.mptcp.mptcp_no_recvbuf_auto=$no_rcv
+        sysctl net.core.netdev_debug=0
+        sysctl net.mptcp.mptcp_cwnd_log=1
+    fi
+
+    
+}
+    
+function set_netem_rtt_and_loss {
+    
+    ssh root@${D1_ip} "./tc.sh 0 `expr ${rtt1[$j]} / 2` 0 && ./tc.sh 1 `expr ${rtt1[$j]} / 2` ${loss[$l]}" > /dev/null
+    ssh root@${D2_ip} "./tc.sh 0 `expr ${rtt2[$m]} / 2` 0 && ./tc.sh 1 `expr ${rtt2[$m]} / 2` ${loss[$l]}" > /dev/null
+    
+}
+
+function clean_log_sender_and_receiver {
+    ssh root@${receiver_ip} "echo > /var/log/kern.log" > /dev/null
+    echo > /var/log/kern.log
+	find /var/log/ -type f -name \* -exec cp -f /dev/null {} \;
+}
+
+function set_txqueuelen {
+    
+    ifconfig ${eth0} txqueuelen ${queue[$k]}
+    ifconfig ${eth1} txqueuelen ${queue[$k]}
+}
+
+function run_iperf {
+    local app_i 
+    local delay
+    for app_i in `seq ${app}` 
+    do
+		delay=`echo "scale=5; $duration + ($app - $app_i) * $app_delay " | bc`
+		if [ $app_i = $app ]; then  # When final app launch
+			iperf -c ${receiver_ip} -t $delay -i $interval > ./${nowdir}/${i}th/throughput/app${app_i}.dat
+		else
+			iperf -c ${receiver_ip} -t $delay -i $interval > ./${nowdir}/${i}th/throughput/app${app_i}.dat &
+			sleep $app_delay
+		fi
+	done
+}
+
+function format_and_copy_log {
+    
+    awk '{
+        if(NR==1){
+            if(NF==0){
+                start=2;     
+            }else{
+                start=1;     
+            } 
+        }
+        if(NF<1){
+            next;
+        }
+        if(length($6)!=1){
+            time=substr($6, 2, length($6)-1);
+            flg=0
+        }else{
+            time=substr($7, 1, length($7)-1);
+            flg=1
+        };
+        if(NR==start){
+            f_time=time;
+        }
+        
+        printf time-f_time" ";
+        for(i=7+flg; i<=NF; i++){
+            printf $i" "
+        }
+        print ""
+    }' ./debug_log/kern.log > ./debug_log/kern.dat
+    #}' /var/log/kern.log > ./${nowdir}/${i}th/log/kern.dat
+    
 }
