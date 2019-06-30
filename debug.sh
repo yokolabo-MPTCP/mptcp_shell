@@ -20,4 +20,9 @@ subflownum=2
 qdisc=pfifo_fast       
 memo=$1   
 today=debug_log
-split_log
+#split_log
+echo "
+test
+aaaa
+$today
+"

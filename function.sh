@@ -295,7 +295,212 @@ function extract_cwnd_each_flow {
    
 }
 
-function split_log {
+function count_mptcp_state {
+    for app_i in `seq ${app}` 
+    do
+        for subflow_i in `seq ${subflownum}` 
+        do
+            grep -ic "send_stall" cwnd${app_i}_subflow${subflow_i}.dat > cwnd${app_i}_subflow${subflow_i}_sendstall.dat
+
+        done
+    done
+
+    for app_i in `seq ${app}` 
+    do
+        for subflow_i in `seq ${subflownum}` 
+        do
+            grep -ic "cwnd_reduced" cwnd${app_i}_subflow${subflow_i}.dat > cwnd${app_i}_subflow${subflow_i}_cwndreduced.dat
+        done
+    done
+
+    for app_i in `seq ${app}` 
+    do
+        for subflow_i in `seq ${subflownum}` 
+        do
+            grep -ic "rcv_buf" cwnd${app_i}_subflow${subflow_i}.dat > cwnd${app_i}_subflow${subflow_i}_rcv_buf.dat
+        done
+    done
+}
+
+function create_plt_file {
+    local targetname=$1
+    local scale=$((second / 5))
+    
+    if [ $# -ne 1 ]; then
+        echo "create_plt_file:argument error"
+        exit 1
+    fi
+
+
+    echo 'set terminal emf enhanced "Arial, 24"
+    set terminal png size 960,720
+    set key outside
+    set key spacing 8
+    set size ratio 0.5
+    set xlabel "time[s]"
+    set ylabel "number of packets"
+    set datafile separator " " ' > ${targetname}.plt
+    echo "set xtics $scale" >> ${targetname}.plt
+    echo "set xrange [0:${dulation}]" >> ${targetname}.plt
+    echo "set output \"cwnd_${nowdir}_${repeat}th.png\"" >> ${targetname}.plt
+
+    echo -n "plot " >> ${targetname}.plt
+
+    for app_i in `seq ${app}` 
+    do
+        while [ $j -le $subflownum ]
+        for subflow_i in `seq ${subflownum}` 
+        do
+            cwndreduced=$(awk 'NR==1' ./log/cwnd${app_i}_subflow${subflow_i}_cwndreduced.dat)
+            sendstall=$(awk 'NR==1' ./log/cwnd${app_i}_subflow${subflow_i}_sendstall.dat)
+            rcv_buf=$(awk 'NR==1' ./log/cwnd${app_i}_subflow${subflow_i}_rcv_buf.dat)
+            echo -n "\"./log/cwnd${app_i}_subflow${subflow_i}.dat\" using 1:7 with lines linewidth 2 title \"APP${app_i} : subflow${subflow_i}   \n sendstall=${sendstall}\nrcvbuf=${rcv_buf}\" " >> ${targetname}.plt
+            if [ $app_i != $app ] || [ $subflow_i != $subflownum ];then
+
+               echo -n " , " >> ${targetname}.plt
+                
+            fi
+        done
+    done
+}
+
+function create_graph_img {
+
+    local var
+
+    for var in "${item_to_create_graph[@]}" 
+    do
+        create_plt_file $var
+        gnuplot $var 
+    done
+
+}
+
+function create_each_tex_file {
+    local targetname=$1
+    
+    if [ $# -ne 1 ]; then
+        echo "create_plt_file:argument error"
+        exit 1
+    fi
+
+    
+    echo "\begin{figure}[htbp]" >> ${cgn_ctrl_var}_${targetname}_${today}.tex
+    echo "\begin{center}" >> ${cgn_ctrl_var}_${targetname}_${today}.tex
+    echo '\includegraphics[width=95mm]' >> ${cgn_ctrl_var}_${targetname}_${today}.tex
+    echo "{${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th/${targetname}_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png}" >> ${cgn_ctrl}_${targetname}_${today}.tex
+    echo "\caption{${cgn_ctrl_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms LOSS=${loss_var}\% queue=${queue_var}pkt ${repeat_i}回目}" >> ${cgn_ctrl_var}_${targetname}_${today}.tex
+    echo '\end{center}
+    \end{figure}' >> ${cgn_ctrl_var}_${targetname}_${today}.tex
+    #if [ $clearpage = 1 ]; then 
+    #    echo "\clearpage" >> ${cgn_ctrl_var}_${targetname}_${today}.tex
+    #fi  
+}
+
+function create_tex_file {
+
+    local var
+
+    for var in "${item_to_create_graph[@]}" 
+    do
+        create_each_tex_file $var
+    done
+
+
+}
+
+function calc_throughput_ave {
+
+    mkdir ave
+    mkdir ave/throughput
+
+    for app_i in `seq ${app}` 
+    do
+        for repeat_i in `seq ${repeat}` 
+        do
+            awk 'END{
+                if(NF==9){
+              if($9 ~ "Kbits/sec"){	
+                printf("%s Mbits/sec\n",$8/1000);
+              }else{
+                printf("%s %s\n",$8,$9);		
+              }
+                    
+                }else{
+              if($8 ~ "Kbits/sec"){	
+                printf("%s Mbits/sec\n",$7/1000);
+              }else{
+                printf("%s %s\n",$7,$8);		
+              }
+                }
+                
+            }' ./${repeat_i}th/throughput/app${app_i}.dat >> ./ave/throughput/app${app_i}.dat
+
+            awk 'END{
+                if(NF==9){
+              if($9 ~ "Kbits/sec"){	
+                printf("%s\n",$8/1000);
+              }else{
+                printf("%s\n",$8);		
+              }
+                    
+                }else{
+                    if($8 ~ "Kbits/sec"){	
+                printf("%s\n",$7/1000);
+              }else{
+                printf("%s\n",$7);		
+              }
+                }
+            }' ./${repeat_i}th/throughput/app${app_i}.dat >> ./${repeat_i}th/throughput/app${app_i}_.dat
+                
+        done
+
+        awk -v repeat=${repeat} 'BEGIN{
+                total=0
+            }{
+                total = total + $1
+            }END{
+            total = total / repeat
+            printf("%s\n",total);
+        }' ./ave/throughput/app${app_i}.dat >> ./ave/throughput/app${app_i}_ave.dat
+    done
+}
+
+function create_throughput_graph {
+    
+    targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
+    mkdir ${targetdir}
+
+}
+
+function create_throughput_graph {
+    local repeat_i
+
+    for repeat_i in `seq ${repeat}` 
+    do
+        echo "\begin{figure}[htbp]" >> ${cgn_ctrl_var}_throughput_${today}.tex
+        echo "\begin{center}" >> ${cgn_ctrl_var}_throughput_${today}.tex
+        echo '\includegraphics[width=95mm]' >> ${cgn_ctrl_var}_throughput_${today}.tex
+        echo "{${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}/${repeat_i}th/throughput_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_${repeat_i}th.png}" >> ${cgn_ctrl_var}_throughput_${today}.tex
+        echo "\caption{${cgn_ctrl_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms LOSS=${loss_var}\% ${repeat_i}回目}" >> ${cgn_ctrl_var}_throughput_${today}.tex
+        echo '\end{center}
+        \end{figure}' >> ${cgn_ctrl_var}_throughput_${today}.tex
+    done
+
+#---------------------ave-------------------------
+
+    echo "\begin{figure}[htbp]" >> ${cgn_ctrl_var}_throughput_${today}_ave.tex
+    echo "\begin{center}" >> ${cgn_ctrl_var}_throughput_${today}_ave.tex
+    echo '\includegraphics[width=95mm]' >> ${cgn_ctrl_var}_throughput_${today}_ave.tex
+    echo "{${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}/ave/throughput_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_ave.png}" >> ${cgn_ctrl_var}_throughput_${today}_ave.tex
+    echo "\caption{${cgn_ctrl_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms LOSS=${loss_var}\% ${repeat}回平均}" >> ${cgn_ctrl_var}_throughput_${today}_ave.tex
+    echo '\end{center}
+    \end{figure}' >> ${cgn_ctrl_var}_throughput_${today}_ave.tex
+
+
+}
+
+function process_log_data {
     local cgn_ctrl_var  
     local rtt1_var  
     local rtt2_var  
@@ -322,13 +527,50 @@ function split_log {
                             separate_cwnd
                             get_app_meta
                             extract_cwnd_each_flow
-                        done 
+                            count_mptcp_state
+                            create_graph_img
+                            create_tex_file
+                        done
+                        cd ../
+                        calc_throughput_ave
                     done    
+                    create_throughput_graph
+                    create_throughput_tex
                 done
             done
         done
     done
 
+}
 
+function build_tex_to_pdf {
+    local cgn_ctrl_var
+    local item_ver
 
+    if !(type platex > /dev/null 2>&1); then
+       echo "platex does not exist."
+       return 1
+    fi
+
+    echo "Make tex file ..."
+    for cgn_ctrl_var in "${cgn_ctrl[@]}" 
+    do
+        for item_var in "${item_to_create_graph[@]}" 
+        do
+            platex -halt-on-error ${cgn_ctrl_var}_${item_var}_${today}.tex > /dev/null
+            dvipdfmx ${cgn_ctrl[$z]}_${item_var}_${today}.dvi > /dev/null
+
+        done
+        platex -halt-on-error ${cgn_ctrl_var}_throughput_${today}.tex > /dev/null
+        dvipdfmx ${cgn_ctrl_var}_throughput_${today}.dvi > /dev/null
+
+        platex -halt-on-error ${cgn_ctrl_var}_throughput_${today}_ave.tex > /dev/null
+        dvipdfmx ${cgn_ctrl_var}_throughput_${today}_ave.dvi > /dev/null
+
+        rm -f ${cgn_ctrl_var}*.log
+        rm -f ${cgn_ctrl_var}*.dvi
+        rm -f ${cgn_ctrl_var}*.aux
+    done
+
+    
 }
