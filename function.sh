@@ -4,16 +4,18 @@ function get_mptcp_version () {
 
     local kernel=$(uname -r)
 
-    case "$kernel" in
-            "3.5.7" ) mptcp_ver=0.86 ;;
-            "3.10.17" ) mptcp_ver=0.87 ;;
-            "3.11.10" ) mptcp_ver=0.88 ;;
-            "3.14.33" ) mptcp_ver=0.89 ;;
-            "3.18.43" ) mptcp_ver=0.90 ;;
-            "4.1.39" ) mptcp_ver=0.91 ;;
-            "4.4.88" ) mptcp_ver=0.92 ;;
-            * ) mptcp_ver=unknown ;;
-    esac
+    if [[ $kernel == *3.5.7* ]]; then
+        mptcp_ver=0.86
+    elif [[ $kernel == *4.4.88* ]]; then
+        mptcp_ver=0.92
+    elif [[ $kernel == *4.4.110* ]]; then
+        mptcp_ver=0.92
+    else
+        mptcp_ver=unknown
+        echo "$kernel"
+        echo "error: mptcp_ver is unkown"
+        exit
+    fi
 
     echo "$mptcp_ver"
 
