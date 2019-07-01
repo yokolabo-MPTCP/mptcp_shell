@@ -673,7 +673,7 @@ function process_log_data {
     local repeat_i 
     local targetdir
     local app_meta=()
-    cd $today
+    cd $cwd/$today
     for cgn_ctrl_var in "${cgn_ctrl[@]}" 
     do
         for rtt1_var in "${rtt1[@]}"
