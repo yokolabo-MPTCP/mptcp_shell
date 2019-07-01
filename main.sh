@@ -37,7 +37,7 @@ change_small_queue=10 #default:10
 
 kernel=$(uname -r)
 mptcp_ver=$(get_mptcp_version)
-configure_ip_address mptcp_ver
+configure_ip_address $mptcp_ver
 
 
 #fixed
