@@ -24,7 +24,7 @@ function get_mptcp_version () {
 function configure_ip_address(){
     local mptcp_ver=$1
 
-    if [ $mptcp_ver = 0.92 ]; then
+    if [[ $mptcp_ver == 0.92 ]]; then
         #receiver_ip=192.168.15.2
         #D1_ip=192.168.3.2
         #D2_ip=192.168.4.2
@@ -36,7 +36,7 @@ function configure_ip_address(){
         D2_ip=192.168.2.2
         eth0=enp0s3
         eth1=enp0s8
-     elif [ $mptcp_ver = 0.86 ]; then
+     elif [[ $mptcp_ver == 0.86 ]]; then
         receiver_ip=192.168.13.1
         D1_ip=192.168.3.2
         D2_ip=192.168.4.2
