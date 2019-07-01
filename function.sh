@@ -142,9 +142,9 @@ function run_iperf {
     do
 		delay=`echo "scale=5; $duration + ($app - $app_i) * $app_delay " | bc`
 		if [ $app_i = $app ]; then  # When final app launch
-			iperf -c ${receiver_ip} -t $delay -i $interval > ./${nowdir}/${i}th/throughput/app${app_i}.dat
+			iperf -c ${receiver_ip} -t $delay -i $interval > ./${nowdir}/${repeat_i}th/throughput/app${app_i}.dat
 		else
-			iperf -c ${receiver_ip} -t $delay -i $interval > ./${nowdir}/${i}th/throughput/app${app_i}.dat &
+			iperf -c ${receiver_ip} -t $delay -i $interval > ./${nowdir}/${repeat_i}th/throughput/app${app_i}.dat &
 			sleep $app_delay
 		fi
 	done

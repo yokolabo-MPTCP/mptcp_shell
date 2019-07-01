@@ -119,7 +119,7 @@ do
 						mkdir ${nowdir}/${repeat_i}th/log
 						mkdir ${nowdir}/${repeat_i}th/throughput
 
-						echo "${cgn_ctrl_var}_RTT1=${rtt1_var}ms, RTT2=${rtt2_var}ms, LOSS=${loss_var}, queue=${queu_var}pkt, ${repeat_i}回目"
+						echo "${cgn_ctrl_var}_RTT1=${rtt1_var}ms, RTT2=${rtt2_var}ms, LOSS=${loss_var}, queue=${queue_var}pkt, ${repeat_i}回目"
 
                         clean_log_sender_and_receiver
                         						
