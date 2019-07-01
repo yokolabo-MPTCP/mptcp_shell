@@ -31,7 +31,7 @@ function configure_ip_address(){
         #eth0=eth0
         #eth1=eth1
 
-        receiver_ip=192.168.15.2
+        receiver_ip=192.168.11.1
         D1_ip=192.168.1.2
         D2_ip=192.168.2.2
         eth0=enp0s3
