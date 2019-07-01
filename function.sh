@@ -179,7 +179,7 @@ function format_and_copy_log {
             printf $i" "
         }
         print ""
-    }' /var/log/kern.log > ./${nowdir}/${i}th/log/kern.dat
+    }' /var/log/kern.log > ./${nowdir}/${repeat_i}th/log/kern.dat
     
 }
 
