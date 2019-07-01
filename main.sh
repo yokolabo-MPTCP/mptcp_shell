@@ -40,9 +40,6 @@ mptcp_ver=$(get_mptcp_version)
 configure_ip_address mptcp_ver
 
 
-exit
-
-
 #fixed
 
 interval=1
@@ -92,6 +89,8 @@ ip link set dev ${eth1} multipath on
 #ethtool -s ${eth1} speed ${band2} duplex full
 
 set_kernel_variable
+check_network_available
+
 
 for cgn_ctrl_var in "${cgn_ctrl[@]}" 
 do

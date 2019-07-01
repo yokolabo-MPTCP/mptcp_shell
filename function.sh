@@ -25,29 +25,52 @@ function configure_ip_address(){
     local mptcp_ver=$1
 
     if [ $mptcp_ver = 0.92 ]; then
+        #receiver_ip=192.168.15.2
+        #D1_ip=192.168.3.2
+        #D2_ip=192.168.4.2
+        #eth0=eth0
+        #eth1=eth1
+
         receiver_ip=192.168.15.2
-        D1_ip=192.168.3.2
-        D2_ip=192.168.4.2
-        eth0=eth0
-        eth1=eth1
-        make_tex=1 #true : 1 , false : 0
+        D1_ip=192.168.1.2
+        D2_ip=192.168.2.2
+        eth0=enp0s3
+        eth1=enp0s8
      elif [ $mptcp_ver = 0.86 ]; then
         receiver_ip=192.168.13.1
         D1_ip=192.168.3.2
         D2_ip=192.168.4.2
         eth0=eth0
         eth1=eth1
-        make_tex=1 #true : 1 , false : 0
-        no_small_queue=1
     else
         receiver_ip=192.168.13.1
         D1_ip=192.168.3.2
         D2_ip=192.168.4.2
         eth0=eth0
         eth1=eth1
-        make_tex=1 #true : 1 , false : 0
     fi
+    
 
+}
+
+function check_network_available {
+   ping receiver_ip -c 1 >> /dev/null
+   if [ $? -ne 0 ]; then
+        echo "error: can't access to receiver [$receiver_ip]"
+        exit
+   fi
+   ping D1_ip -c 1 >> /dev/null
+   if [ $? -ne 0 ]; then
+        echo "error: can't access to D1 [$D1_ip]"
+        exit
+   fi
+    ping D2_ip -c 1 >> /dev/null
+   if [ $? -ne 0 ]; then
+        echo "error: can't access to D2 [$D2_ip]"
+        exit
+   fi
+
+    echo "network is ok."
 }
 
 function create_setting_file {
