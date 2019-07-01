@@ -54,17 +54,17 @@ function configure_ip_address(){
 }
 
 function check_network_available {
-   ping receiver_ip -c 1 >> /dev/null
+   ping $receiver_ip -c 1 >> /dev/null
    if [ $? -ne 0 ]; then
         echo "error: can't access to receiver [$receiver_ip]"
         exit
    fi
-   ping D1_ip -c 1 >> /dev/null
+   ping $D1_ip -c 1 >> /dev/null
    if [ $? -ne 0 ]; then
         echo "error: can't access to D1 [$D1_ip]"
         exit
    fi
-    ping D2_ip -c 1 >> /dev/null
+    ping $D2_ip -c 1 >> /dev/null
    if [ $? -ne 0 ]; then
         echo "error: can't access to D2 [$D2_ip]"
         exit
@@ -104,9 +104,9 @@ function set_kernel_variable {
     sysctl net.mptcp.mptcp_debug=1
     sysctl net.mptcp.mptcp_enabled=1
     #sysctl net.core.default_qdisc=${qdisc}
-    sysctl net.mptcp.mptcp_no_small_queue=${no_small_queue}
-    sysctl net.mptcp.mptcp_change_small_queue=${change_small_queue}
-    sysctl net.mptcp.mptcp_no_cwr=${no_cwr}
+    #sysctl net.mptcp.mptcp_no_small_queue=${no_small_queue}
+    #sysctl net.mptcp.mptcp_change_small_queue=${change_small_queue}
+    #sysctl net.mptcp.mptcp_no_cwr=${no_cwr}
     if [ $mptcp_ver = 0.86 ]; then
         sysctl net.mptcp.mptcp_no_recvbuf_auto=$no_rcv
         sysctl net.core.netdev_debug=0
