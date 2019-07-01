@@ -296,6 +296,8 @@ function extract_cwnd_each_flow {
 }
 
 function count_mptcp_state {
+    local app_i
+    local subflow_i
     for app_i in `seq ${app}` 
     do
         for subflow_i in `seq ${subflownum}` 
@@ -323,6 +325,8 @@ function count_mptcp_state {
 }
 
 function create_plt_file {
+    local app_i
+    local subflow_i
     local targetname=$1
     local scale=$((second / 5))
     
@@ -410,7 +414,8 @@ function create_tex_file {
 }
 
 function calc_throughput_ave {
-
+    local app_i
+    local repeat_i
     mkdir ave
     mkdir ave/throughput
 
@@ -467,13 +472,149 @@ function calc_throughput_ave {
 }
 
 function create_throughput_graph {
-    
-    targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
+    local repeat_i 
+    local app_i
+    local queue_var
+    local throughput
+    nowdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
     mkdir ${targetdir}
+    for repeat_i in `seq ${repeat}` 
+    do
+        mkdir ${nowdir}/${repeat_i}th
+    done
+
+    for repeat_i in `seq ${repeat}` 
+    do
+        for queue_var in "${queue[@]}"
+        do
+            for app_i in `seq ${app}` 
+            do
+                throughput=$(cat ${cgn_ctrl}_rtt1=${rtt1}_rtt2=${rtt2}_loss=${loss}_queue=${queue_var}/${repeat_i}th/throughput/app${app_i}_.dat)
+                echo "${queue_var} ${throughput}" >> ./${nowdir}/${repeat_i}th/app${app_i}.dat
+            done
+        done
+
+        for app_i in `seq ${app}` 
+        do
+            if [ $app_i -eq 1 ]; then
+                cp ./${nowdir}/${repeat_i}th/app${app_i}.dat ./${nowdir}/${repeat_i}th/graphdata.dat
+            else
+                join ./${nowdir}/${repeat_i}th/graphdata.dat ./${nowdir}/${repeat_i}th/app${app_i}.dat > ${nowdir}/${repeat_i}th/tmp.dat
+                mv ${nowdir}/${repeat_i}th/tmp.dat ./${nowdir}/${repeat_i}th/graphdata.dat
+            fi
+        done
+
+        awk '{
+            total=0
+            for (i = 2;i <= NF;i++){
+                total += $i;
+            }
+            printf("%s %f\n",$0,total)
+
+        }' ./${nowdir}/${repeat_i}th/graphdata.dat > ./${nowdir}/${repeat_i}th/graphdata_total.dat
+
+        echo 'set terminal emf enhanced "Arial, 24"
+        set terminal png size 960,720
+        set xlabel "queue"
+        set ylabel "throughput"
+        set key outside
+        set size ratio 0.5
+        set boxwidth 0.5 relative 
+        set datafile separator " " ' > ./${nowdir}/${repeat_i}th/plot.plt
+        echo "set title \"throughput ${nowdir} ${repeat_i}th\"" >> ./${nowdir}/${repeat_i}th/plot.plt 
+        echo "set yrange [0:200]" >> ./${nowdir}/${repeat_i}th/plot.plt
+        echo "set output \"throughput_${nowdir}_${repeat_i}th.png\"" >> ./${nowdir}/${repeat_i}th/plot.plt
+
+        echo -n "plot " >> ./${nowdir}/${repeat_i}th/plot.plt
+
+        for app_i in `seq ${app}` 
+        do
+            n=`expr $app_i + 1`
+            echo -n "\"./graphdata_total.dat\" using $n:xtic(1) with linespoints linewidth 2 title \"APP${app_i}\" " >> ./${nowdir}/${repeat_i}th/plot.plt
+            if [ $app_i != $appnum ];then
+
+                echo -n " , " >> ./${nowdir}/${repeat_i}th/plot.plt
+            else
+                 n=`expr $n + 1`
+                 echo -n " , \"./graphdata_total.dat\" using $n:xtic(1) with linespoints linewidth 4 title \"Total\" " >> ./${nowdir}/${repeat_i}th/plot.plt
+            fi
+        done
+
+        cd ./${nowdir}/${repeat_i}th/
+        gnuplot "./plot.plt"
+        cd ../../
+        #gnuplot "./${nowdir}/${repeat_i}th/plot.plt"
+
+        cp ${nowdir}/${repeat_i}th/throughput_${nowdir}_${repeat_i}th.png ./${nowdir}
+
+    done 
+
+
+    mkdir ${nowdir}/ave
+
+    for queue_var in "${queue[@]}"
+    do
+        for app_i in `seq ${app}` 
+        do
+            throughput=$(cat ${cgn_ctrl}_rtt1=${rtt1}_rtt2=${rtt2}_loss=${loss}_queue=${queue_var}/ave/throughput/app${app_i}_ave.dat)
+            echo "${queue_var} ${throughput}" >> ./${nowdir}/ave/app${app_i}dat
+        done
+    done
+
+    for app_i in `seq ${app}` 
+    do
+        if [ $app_i -eq 1 ]; then
+            cp ./${nowdir}/ave/app${app_i}.dat ./${nowdir}/ave/graphdata.dat
+        else
+            join ./${nowdir}/ave/graphdata.dat ./${nowdir}/ave/app${app_i}.dat > ${nowdir}/ave/tmp.dat
+            mv ${nowdir}/ave/tmp.dat ./${nowdir}/ave/graphdata.dat
+        fi
+    done
+
+    awk '{
+    total=0
+    for (i = 2;i <= NF;i++){
+        total += $i;
+    }
+    printf("%s %f\n",$0,total)
+
+    }' ./${nowdir}/ave/graphdata.dat > ./${nowdir}/ave/graphdata_total.dat
+
+    echo 'set terminal emf enhanced "Arial, 24"
+    set terminal png size 960,720
+    set xlabel "queue"
+    set ylabel "throughput"
+    set key outside
+    set size ratio 0.5
+    set boxwidth 0.5 relative 
+    set datafile separator " " ' > ./${nowdir}/ave/plot.plt
+    echo "set title \"throughput ${nowdir} ${repeat} times average \"" >> ./${nowdir}/ave/plot.plt 
+    echo "set yrange [0:200]" >> ./${nowdir}/ave/plot.plt
+    echo "set output \"throughput_${nowdir}_ave.png\"" >> ./${nowdir}/ave/plot.plt
+
+    echo -n "plot " >> ./${nowdir}/ave/plot.plt
+
+    for app_i in `seq ${app}` 
+    do
+        n=`expr $app_i + 1`
+        echo -n "\"./graphdata_total.dat\" using $n:xtic(1) with linespoints linewidth 2 title \"APP${app_i}\" " >> ./${nowdir}/ave/plot.plt
+        if [ $app_i != $appnum ];then
+
+        echo -n " , " >> ./${nowdir}/ave/plot.plt
+        else
+         n=`expr $n + 1`
+         echo -n " , \"./graphdata_total.dat\" using $n:xtic(1) with linespoints linewidth 4 title \"Total\" " >> ./${nowdir}/ave/plot.plt
+        fi
+
+    done
+
+    cd ./${nowdir}/ave/
+    gnuplot "./plot.plt"
+    cd ../../
 
 }
 
-function create_throughput_graph {
+function create_throughput_tex {
     local repeat_i
 
     for repeat_i in `seq ${repeat}` 

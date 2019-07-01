@@ -120,7 +120,6 @@ do
 						mkdir ${nowdir}/${repeat_i}th/log
 						mkdir ${nowdir}/${repeat_i}th/throughput
 
-						ssh root@${receiver_ip} "sysctl net.mptcp.mptcp_debug=1" > /dev/null
 						echo "${cgn_ctrl_var}_RTT1=${rtt1_var}ms, RTT2=${rtt2_var}ms, LOSS=${loss_var}, queue=${queu_var}pkt, ${repeat_i}回目"
 
                         crean_log_sender_and_receiver
@@ -132,7 +131,6 @@ do
 						killall iperf &> /dev/null
 						sleep 10
 						
-						ssh root@${receiver_ip} "sysctl net.mptcp.mptcp_debug=0" > /dev/null
 						format_and_copy_log
 					done
 				done
