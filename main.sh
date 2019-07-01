@@ -40,7 +40,6 @@ mptcp_ver=$(get_mptcp_version)
 configure_ip_address mptcp_ver
 
 
-exit
 
 
 #fixed
@@ -122,7 +121,7 @@ do
 
 						echo "${cgn_ctrl_var}_RTT1=${rtt1_var}ms, RTT2=${rtt2_var}ms, LOSS=${loss_var}, queue=${queu_var}pkt, ${repeat_i}回目"
 
-                        crean_log_sender_and_receiver
+                        clean_log_sender_and_receiver
                         						
                         sleep 0.5
                         run_iperf

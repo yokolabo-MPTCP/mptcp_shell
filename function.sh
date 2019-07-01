@@ -352,7 +352,6 @@ function create_plt_file {
 
     for app_i in `seq ${app}` 
     do
-        while [ $j -le $subflownum ]
         for subflow_i in `seq ${subflownum}` 
         do
             cwndreduced=$(awk 'NR==1' ./log/cwnd${app_i}_subflow${subflow_i}_cwndreduced.dat)
