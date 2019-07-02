@@ -138,98 +138,12 @@ do
 done
 
 process_log_data
-create_tex_file
+join_header_and_tex_file
 build_tex_to_pdf
-
-
-z=0
-while [ $z -lt ${#cgn_ctrl[@]} ]
-do
-	cp ../tex_header.txt ./tex_header.txt
-	echo "\title{cwnd \\\\ ${cgn_ctrl[$z]} }" >> ./tex_header.txt
-	echo "\author{${author}}" >> ./tex_header.txt
-	echo "\maketitle" >> ./tex_header.txt
-	echo "\begin{table}[h]" >> ./tex_header.txt
-	echo "\begin{center}" >> ./tex_header.txt
-	echo "\begin{tabular}{ll}" >> ./tex_header.txt
-	echo "date & \verb|${today}| \\\\" >> ./tex_header.txt
-	echo "\verb|sender_kernel| & \verb|${kernel}| \\\\" >> ./tex_header.txt
-	echo "\verb|receiver_kernel| & \verb|${rcvkernel}| \\\\" >> ./tex_header.txt
-	echo "mptcp version & ${mptcp_ver} \\\\" >> ./tex_header.txt
-	echo "other cgnctrl & ${cgn_ctrl[@]} \\\\" >> ./tex_header.txt
-	echo "qdisc & ${qdisc}\\\\" >> ./tex_header.txt
-	echo "app & ${app}\\\\" >> ./tex_header.txt
-	echo "rtt1 & ${rtt1[@]}\\\\" >> ./tex_header.txt
-	echo "rtt2 & ${rtt2[@]}\\\\" >> ./tex_header.txt
-	echo "loss & ${loss[@]}\\\\" >> ./tex_header.txt
-	echo "queue & ${queue[@]}\\\\" >> ./tex_header.txt
-	echo "duration & ${duration}\\\\" >> ./tex_header.txt
-	echo "sleep & ${sleep}\\\\" >> ./tex_header.txt
-	echo "repeat & ${repeat}\\\\" >> ./tex_header.txt
-	echo "nocwr & ${no_cwr}\\\\" >> ./tex_header.txt
-	echo "norcv & ${no_rcv}\\\\" >> ./tex_header.txt
-	echo "\verb|no_small_queue| & ${no_small_queue}\\\\" >> ./tex_header.txt
-	echo "\verb|subflownum| & \verb|${subflownum}| \\\\" >> ./tex_header.txt
-	echo "memo & \verb|${memo}|\\\\" >> ./tex_header.txt
-	echo "\end{tabular}" >> ./tex_header.txt
-	echo "\end{center}" >> ./tex_header.txt
-	echo "\end{table}" >> ./tex_header.txt
-	echo "\clearpage" >> ./tex_header.txt
-
-	cat ./tex_header.txt ${cgn_ctrl[$z]}_cwnd_${today}.tex > tmp.tex
-	mv tmp.tex ${cgn_ctrl[$z]}_cwnd_${today}.tex
-	cat ${cgn_ctrl[$z]}_cwnd_${today}.tex ../tex_footer.txt > tmp.tex
-	mv tmp.tex ${cgn_ctrl[$z]}_cwnd_${today}.tex
-
-	cp ../tex_header.txt ./tex_header.txt
-	echo "\title{Throughput \\\\ ${cgn_ctrl[$z]} }" >> ./tex_header.txt
-	echo "\author{${author}}" >> ./tex_header.txt
-	echo "\maketitle" >> ./tex_header.txt
-	echo "\begin{table}[h]" >> ./tex_header.txt
-	echo "\begin{center}" >> ./tex_header.txt
-	echo "\begin{tabular}{ll}" >> ./tex_header.txt
-	echo "date & \verb|${today}| \\\\" >> ./tex_header.txt
-	echo "\verb|sender_kernel| & \verb|${kernel}| \\\\" >> ./tex_header.txt
-	echo "\verb|receiver_kernel| & \verb|${rcvkernel}| \\\\" >> ./tex_header.txt
-	echo "mptcp version & ${mptcp_ver} \\\\" >> ./tex_header.txt
-	echo "other cgnctrl & ${cgn_ctrl[@]}\\\\" >> ./tex_header.txt
-	echo "qdisc & \verb|${qdisc}|\\\\" >> ./tex_header.txt
-	echo "app & ${app}\\\\" >> ./tex_header.txt
-	echo "rtt1 & ${rtt1[@]}\\\\" >> ./tex_header.txt
-	echo "rtt2 & ${rtt2[@]}\\\\" >> ./tex_header.txt
-	echo "loss & ${loss[@]}\\\\" >> ./tex_header.txt
-	echo "queue & ${queue[@]}\\\\" >> ./tex_header.txt
-	echo "duration & ${duration}\\\\" >> ./tex_header.txt
-	echo "sleep & ${sleep}\\\\" >> ./tex_header.txt
-	echo "repeat & ${repeat}\\\\" >> ./tex_header.txt
-	echo "nocwr & ${no_cwr}\\\\" >> ./tex_header.txt
-	echo "norcv & ${no_rcv}\\\\" >> ./tex_header.txt
-	echo "\verb|no_small_queue| & ${no_small_queue}\\\\" >> ./tex_header.txt
-	echo "\verb|subflownum| & \verb|${subflownum}| \\\\" >> ./tex_header.txt
-	echo "memo & \verb|${memo}|\\\\" >> ./tex_header.txt
-	echo "\end{tabular}" >> ./tex_header.txt
-	echo "\end{center}" >> ./tex_header.txt
-	echo "\end{table}" >> ./tex_header.txt
-	echo "\clearpage" >> ./tex_header.txt
-
-	cat ./tex_header.txt ${cgn_ctrl[$z]}_throughput_${today}.tex > tmp.tex
-	mv tmp.tex ${cgn_ctrl[$z]}_throughput_${today}.tex
-	cat ${cgn_ctrl[$z]}_throughput_${today}.tex ../tex_footer.txt > tmp.tex
-	mv tmp.tex ${cgn_ctrl[$z]}_throughput_${today}.tex
-
-	cat ./tex_header.txt ${cgn_ctrl[$z]}_throughput_${today}_ave.tex > tmp.tex
-	mv tmp.tex ${cgn_ctrl[$z]}_throughput_${today}_ave.tex
-	cat ${cgn_ctrl[$z]}_throughput_${today}_ave.tex ../tex_footer.txt > tmp.tex
-	mv tmp.tex ${cgn_ctrl[$z]}_throughput_${today}_ave.tex
-	z=`expr $z + 1`
-done
-
 
 
 sysctl net.mptcp.mptcp_debug=0
 sysctl net.mptcp.mptcp_enabled=1
-#sysctl net.core.netdev_debug=0
-sysctl net.mptcp.mptcp_no_cwr=0
 umask 022
 
 date

@@ -756,3 +756,83 @@ function build_tex_to_pdf {
 
     
 }
+
+function create_tex_header {
+    local item_name=$1
+
+
+
+    echo '
+    \documentclass{jsarticle}
+    \usepackage[dvipdfmx]{graphicx}
+    \usepackage{grffile}
+    \usepackage[top=0truemm,bottom=0truemm,left=0truemm,right=0truemm]{geometry}
+    \begin{document}
+    ' > tex_header.txt
+   
+    echo "\title{${item_name} \\\\ ${cgn_ctrl_var} }" >> ./tex_header.txt
+	echo "\author{${author}}" >> ./tex_header.txt
+	echo "\maketitle" >> ./tex_header.txt
+	echo "\begin{table}[h]" >> ./tex_header.txt
+	echo "\begin{center}" >> ./tex_header.txt
+	echo "\begin{tabular}{ll}" >> ./tex_header.txt
+	echo "date & \verb|${today}| \\\\" >> ./tex_header.txt
+	echo "\verb|sender_kernel| & \verb|${kernel}| \\\\" >> ./tex_header.txt
+	echo "\verb|receiver_kernel| & \verb|${rcvkernel}| \\\\" >> ./tex_header.txt
+	echo "mptcp version & ${mptcp_ver} \\\\" >> ./tex_header.txt
+	echo "other cgnctrl & ${cgn_ctrl[@]} \\\\" >> ./tex_header.txt
+	echo "qdisc & ${qdisc}\\\\" >> ./tex_header.txt
+	echo "app & ${app}\\\\" >> ./tex_header.txt
+	echo "rtt1 & ${rtt1[@]}\\\\" >> ./tex_header.txt
+	echo "rtt2 & ${rtt2[@]}\\\\" >> ./tex_header.txt
+	echo "loss & ${loss[@]}\\\\" >> ./tex_header.txt
+	echo "queue & ${queue[@]}\\\\" >> ./tex_header.txt
+	echo "duration & ${duration}\\\\" >> ./tex_header.txt
+	echo "sleep & ${sleep}\\\\" >> ./tex_header.txt
+	echo "repeat & ${repeat}\\\\" >> ./tex_header.txt
+	echo "\verb|subflownum| & \verb|${subflownum}| \\\\" >> ./tex_header.txt
+	echo "memo & \verb|${memo}|\\\\" >> ./tex_header.txt
+	echo "\end{tabular}" >> ./tex_header.txt
+	echo "\end{center}" >> ./tex_header.txt
+	echo "\end{table}" >> ./tex_header.txt
+	echo "\clearpage" >> ./tex_header.txt
+
+
+
+}
+
+function join_header_and_tex_file {
+    local var
+    local tex_file_name
+   
+    for cgn_ctrl_var in "${cgn_ctrl[@]}" 
+    do
+        for item_var in "${item_to_create_graph[@]}" 
+        do
+            create_tex_header ${item_var}
+            tex_file_name=${cgn_ctrl_var}_${item_var}_${today}
+            cat ./tex_header.txt ./${tex_file_name}.tex > tmp.tex
+            mv tmp.tex ./${tex_file_name}.tex 
+            rm ./tex_header.txt
+            echo "\end{document}" >> ${tex_file_name}.tex
+        done
+    done
+
+    for cgn_ctrl_var in "${cgn_ctrl[@]}" 
+    do
+        tex_file_name=${cgn_ctrl_var}_throughput_${today}
+
+        create_tex_header "Throughput"
+        cat ./tex_header.txt ./${tex_file_name}.tex > tmp.tex
+        mv tmp.tex ./${tex_file_name}.tex 
+        echo "\end{document}" >> ${tex_file_name}.tex
+        rm ./tex_header.txt
+
+        create_tex_header "Throughput ${repeat} repeat"
+        cat ./tex_header.txt ./${tex_file_name}_ave.tex > tmp.tex
+        mv tmp.tex ./${tex_file_name}_ave.tex 
+        echo "\end{document}" >> ${tex_file_name}_ave.tex
+        rm ./tex_header.txt
+    done
+
+}
