@@ -781,7 +781,7 @@ function create_tex_header {
 	echo "\verb|receiver_kernel| & \verb|${rcvkernel}| \\\\" >> ./tex_header.txt
 	echo "mptcp version & ${mptcp_ver} \\\\" >> ./tex_header.txt
 	echo "other cgnctrl & ${cgn_ctrl[@]} \\\\" >> ./tex_header.txt
-	echo "qdisc & ${qdisc}\\\\" >> ./tex_header.txt
+	echo "qdisc & \verb|${qdisc}|\\\\" >> ./tex_header.txt
 	echo "app & ${app}\\\\" >> ./tex_header.txt
 	echo "rtt1 & ${rtt1[@]}\\\\" >> ./tex_header.txt
 	echo "rtt2 & ${rtt2[@]}\\\\" >> ./tex_header.txt
