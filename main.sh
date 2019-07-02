@@ -17,19 +17,18 @@ cgn_ctrl=(lia)          # congestion control e.g. lia olia balia wvegas cubic re
 rtt1=(50)               # delay of netem [ms]
 rtt2=(50)               
 loss=(0)                # Packet drop rate of netem [%]
-queue=(100 1000 20000)  # The number of IFQ size [packet]
-duration=100            # Communication Time [s]
+queue=(100 1000)  # The number of IFQ size [packet]
+duration=1            # Communication Time [s]
 app_delay=0.5           # Time of start time difference [s]
-repeat=1                # The number of repeat
+repeat=2             # The number of repeat
 app=3                   # The number of Application (iperf)
 qdisc=pfifo_fast        # AQM (Active queue management) e.g. pfifo_fast red fq_codel
 memo=$1
 
-item_to_create_graph=(cwnd packetsout)
+author="Izumi Daichi"
+item_to_create_graph=(cwnd)
 # Kernel variable
 
-no_cwr=0
-no_rcv=0
 no_small_queue=1 #0:default 1:original
 change_small_queue=10 #default:10
 
@@ -49,7 +48,7 @@ temp=0
 band1=100
 band2=100
 
-num_subflow=2
+subflownum=2
 
 timeflag=1
 clearpage=0
@@ -148,7 +147,7 @@ while [ $z -lt ${#cgn_ctrl[@]} ]
 do
 	cp ../tex_header.txt ./tex_header.txt
 	echo "\title{cwnd \\\\ ${cgn_ctrl[$z]} }" >> ./tex_header.txt
-	echo "\author{Kariya Naito}" >> ./tex_header.txt
+	echo "\author{${author}}" >> ./tex_header.txt
 	echo "\maketitle" >> ./tex_header.txt
 	echo "\begin{table}[h]" >> ./tex_header.txt
 	echo "\begin{center}" >> ./tex_header.txt
@@ -170,7 +169,7 @@ do
 	echo "nocwr & ${no_cwr}\\\\" >> ./tex_header.txt
 	echo "norcv & ${no_rcv}\\\\" >> ./tex_header.txt
 	echo "\verb|no_small_queue| & ${no_small_queue}\\\\" >> ./tex_header.txt
-	echo "\verb|num_subflow| & \verb|${num_subflow}| \\\\" >> ./tex_header.txt
+	echo "\verb|subflownum| & \verb|${subflownum}| \\\\" >> ./tex_header.txt
 	echo "memo & \verb|${memo}|\\\\" >> ./tex_header.txt
 	echo "\end{tabular}" >> ./tex_header.txt
 	echo "\end{center}" >> ./tex_header.txt
@@ -184,7 +183,7 @@ do
 
 	cp ../tex_header.txt ./tex_header.txt
 	echo "\title{Throughput \\\\ ${cgn_ctrl[$z]} }" >> ./tex_header.txt
-	echo "\author{Kariya Naito}" >> ./tex_header.txt
+	echo "\author{${author}}" >> ./tex_header.txt
 	echo "\maketitle" >> ./tex_header.txt
 	echo "\begin{table}[h]" >> ./tex_header.txt
 	echo "\begin{center}" >> ./tex_header.txt
@@ -206,7 +205,7 @@ do
 	echo "nocwr & ${no_cwr}\\\\" >> ./tex_header.txt
 	echo "norcv & ${no_rcv}\\\\" >> ./tex_header.txt
 	echo "\verb|no_small_queue| & ${no_small_queue}\\\\" >> ./tex_header.txt
-	echo "\verb|num_subflow| & \verb|${num_subflow}| \\\\" >> ./tex_header.txt
+	echo "\verb|subflownum| & \verb|${subflownum}| \\\\" >> ./tex_header.txt
 	echo "memo & \verb|${memo}|\\\\" >> ./tex_header.txt
 	echo "\end{tabular}" >> ./tex_header.txt
 	echo "\end{center}" >> ./tex_header.txt
