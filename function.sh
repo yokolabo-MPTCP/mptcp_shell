@@ -87,7 +87,7 @@ function create_setting_file {
     echo "loss ${loss[@]}" >> setting.txt
     echo "queue ${queue[@]}" >> setting.txt
     echo "duration ${duration}" >> setting.txt
-    echo "sleep ${sleep}" >> setting.txt
+    echo "app_delay ${app_delay}" >> setting.txt
     echo "repeat ${repeat}" >> setting.txt
     echo "interval ${interval}" >> setting.txt
     echo "no_cwr ${no_cwr}" >> setting.txt
@@ -141,6 +141,7 @@ function run_iperf {
     for app_i in `seq ${app}` 
     do
 		delay=`echo "scale=5; $duration + ($app - $app_i) * $app_delay " | bc`
+        echo "delay = $delay"
 		if [ $app_i = $app ]; then  # When final app launch
 			iperf -c ${receiver_ip} -t $delay -i $interval > ./${nowdir}/${repeat_i}th/throughput/app${app_i}.dat
 		else
@@ -789,7 +790,7 @@ function create_tex_header {
 	echo "loss & ${loss[@]}\\\\" >> ./tex_header.txt
 	echo "queue & ${queue[@]}\\\\" >> ./tex_header.txt
 	echo "duration & ${duration}\\\\" >> ./tex_header.txt
-	echo "sleep & ${sleep}\\\\" >> ./tex_header.txt
+	echo "\verb|app_delay| & \verb|${app_delay}|\\\\" >> ./tex_header.txt
 	echo "repeat & ${repeat}\\\\" >> ./tex_header.txt
 	echo "memo & \verb|${memo}|\\\\" >> ./tex_header.txt
 	echo "\end{tabular}" >> ./tex_header.txt
