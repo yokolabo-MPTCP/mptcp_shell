@@ -26,7 +26,7 @@ qdisc=pfifo_fast        # AQM (Active queue management) e.g. pfifo_fast red fq_c
 memo=$1
 
 author="Izumi Daichi"
-item_to_create_graph=(cwnd)
+item_to_create_graph=(cwnd packetsout)
 # Kernel variable
 
 no_small_queue=1 #0:default 1:original

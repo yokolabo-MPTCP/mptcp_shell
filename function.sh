@@ -383,7 +383,7 @@ function create_plt_file {
     set datafile separator " " ' > ${targetdir}/${targetname}.plt
     echo "set xtics $scale" >> ${targetdir}/${targetname}.plt
     echo "set xrange [0:${duration}]" >> ${targetdir}/${targetname}.plt
-    echo "set output \"${targetname}_${today}_${repeat_i}th.png\"" >> ${targetdir}/${targetname}.plt
+    echo "set output \"${targetname}_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png\"" >> ${targetdir}/${targetname}.plt
 
     echo -n "plot " >> ${targetdir}/${targetname}.plt
 
