@@ -782,6 +782,7 @@ function create_tex_header {
 	echo "mptcp version & ${mptcp_ver} \\\\" >> ./tex_header.txt
 	echo "other cgnctrl & ${cgn_ctrl[@]} \\\\" >> ./tex_header.txt
 	echo "qdisc & \verb|${qdisc}|\\\\" >> ./tex_header.txt
+	echo "\verb|subflownum| & \verb|${subflownum}| \\\\" >> ./tex_header.txt
 	echo "app & ${app}\\\\" >> ./tex_header.txt
 	echo "rtt1 & ${rtt1[@]}\\\\" >> ./tex_header.txt
 	echo "rtt2 & ${rtt2[@]}\\\\" >> ./tex_header.txt
@@ -790,7 +791,6 @@ function create_tex_header {
 	echo "duration & ${duration}\\\\" >> ./tex_header.txt
 	echo "sleep & ${sleep}\\\\" >> ./tex_header.txt
 	echo "repeat & ${repeat}\\\\" >> ./tex_header.txt
-	echo "\verb|subflownum| & \verb|${subflownum}| \\\\" >> ./tex_header.txt
 	echo "memo & \verb|${memo}|\\\\" >> ./tex_header.txt
 	echo "\end{tabular}" >> ./tex_header.txt
 	echo "\end{center}" >> ./tex_header.txt
