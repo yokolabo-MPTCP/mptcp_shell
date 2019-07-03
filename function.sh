@@ -202,7 +202,7 @@ function separate_cwnd {
         }
 
     }else if(match ($9, target)==1){
-        printf("$1 ")
+        printf("%s ",$1)
         for(i=5;i<=NF;i++){
             printf("%s ",$i)
         }
