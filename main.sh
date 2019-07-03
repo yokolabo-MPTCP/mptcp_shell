@@ -120,14 +120,7 @@ do
 						echo "${cgn_ctrl_var}_RTT1=${rtt1_var}ms, RTT2=${rtt2_var}ms, LOSS=${loss_var}, queue=${queue_var}pkt, ${repeat_i}回目"
 
                         clean_log_sender_and_receiver
-                        						
-                        sleep 0.5
                         run_iperf
-												
-						sleep 10
-						killall iperf &> /dev/null
-						sleep 10
-						
 						format_and_copy_log
 					done
 				done

@@ -141,7 +141,6 @@ function run_iperf {
     for app_i in `seq ${app}` 
     do
 		delay=`echo "scale=5; $duration + ($app - $app_i) * $app_delay " | bc`
-        echo "delay = $delay"
 		if [ $app_i = $app ]; then  # When final app launch
 			iperf -c ${receiver_ip} -t $delay -i $interval > ./${nowdir}/${repeat_i}th/throughput/app${app_i}.dat
 		else
@@ -187,6 +186,7 @@ function format_and_copy_log {
 function separate_cwnd {
     targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
      awk '{
+     target="cwnd*"
     if($11 ~ "cwnd="){
         if(NF == 18){
             printf("%s %s %s %s %s %s %s %s %s",$1,$5,$6,$8,$9,$11,$12,$17,$18)
@@ -201,6 +201,12 @@ function separate_cwnd {
             printf("%s %s %s %s %s %s %s %s %s %s",$1,$4,$5,$7,$8,$10,$11,$16,$17,$18)
         }
 
+    }else if(match ($9, target)==1){
+        printf("$1 ")
+        for(i=5;i<=NF;i++){
+            printf("%s ",$i)
+        }
+    
     }else{
         next
     }
