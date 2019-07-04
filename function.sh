@@ -711,6 +711,9 @@ function process_log_data {
         do
             for rtt2_var in "${rtt2[@]}"
             do
+                if [ ${rtt1_var} != ${rtt2_var} ] ; then
+                    continue
+                fi
                 for loss_var in "${loss[@]}"
                 do
                     for queue_var in "${queue[@]}"
@@ -906,7 +909,7 @@ function change_graph_xrange {
                             awk -v startpoint=${start_point} -v endpoint=${end_point} -v scale=${scale} '{
                                 if($2~"xrange"){
                                     printf("set xrange [%s:%s]\n",startpoint,endpoint) 
-                                }if($2 ~ "xtics"){
+                                }else if ($2 ~ "xtics"){
                                     printf("set xtics %s\n",scale) 
                                 }else{
                                     print
