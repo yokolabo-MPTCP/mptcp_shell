@@ -671,7 +671,7 @@ function create_throughput_graph {
     cd ${targetdir}/ave
     gnuplot plot.plt
     img_file=throughput_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_ave.png
-    ln -s  ../../${targetdir}/${repeat_i}th/${img_file} ../../tex/img/
+    ln -s  ../../${targetdir}/ave/${img_file} ../../tex/img/
 
     cd ../..
 }
