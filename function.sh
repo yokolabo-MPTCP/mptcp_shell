@@ -424,7 +424,7 @@ function create_graph_img {
         create_plt_file $var
         cd ${targetdir}
         gnuplot $var.plt 
-        img_file=$var_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png 
+        img_file=${var}_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png 
         ln -s  ../../${targetdir}/${img_file} ../../tex/img/
 
         cd ../../
@@ -434,7 +434,7 @@ function create_graph_img {
 
 function create_each_tex_file {
     local targetname=$1
-    local tex_name=${cgn_ctrl_var}_${targetname}_${today}.tex
+    local tex_name=tex/${cgn_ctrl_var}_${targetname}_${today}.tex
     local img_name=${targetname}_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png
 
     if [ $# -ne 1 ]; then
