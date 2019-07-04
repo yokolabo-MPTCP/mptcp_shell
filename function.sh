@@ -759,7 +759,7 @@ function build_tex_to_pdf {
        return 1
     fi
 
-    echo "Make tex file ..."
+    echo "Build tex file ..."
     for cgn_ctrl_var in "${cgn_ctrl[@]}" 
     do
         for item_var in "${item_to_create_graph[@]}" 

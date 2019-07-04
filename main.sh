@@ -136,7 +136,6 @@ build_tex_to_pdf
 
 
 sysctl net.mptcp.mptcp_debug=0
-sysctl net.mptcp.mptcp_enabled=1
 umask 022
 
 date
