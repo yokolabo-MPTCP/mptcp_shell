@@ -21,12 +21,9 @@ qdisc=pfifo_fast
 memo=$1   
 today=debug_log
 #split_log
-targetname=cw
-awk -v targetname=${targetname} '{
-    search=targetname"*"
-    for (i=1;i<=NF;i++){
-       if( match( $i, search) == 1){
-           print i
-       }
-    }
-}' "test.txt"
+targetname=(a b c)
+
+select VAR in ${targetname[@]} "exit"
+do
+    echo $VAR
+done

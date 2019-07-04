@@ -13,7 +13,6 @@ function get_mptcp_version () {
     elif [[ $kernel == *vbox* ]]; then
         mptcp_ver=vbox
     else
-    else
         mptcp_ver=unknown
         echo "$kernel"
         echo "error: mptcp_ver is unkown"
@@ -98,6 +97,7 @@ function create_setting_file {
     echo "no_small_queue ${no_small_queue}" >> setting.txt
     echo "qdisc ${qdisc}" >> setting.txt
     echo "subflownum ${subflownum}" >> setting.txt
+    echo "item_to_create_graph ${item_to_create_graph[@]}" >> setting.txt
     echo "memo ${memo}" >> setting.txt
 
 
@@ -854,11 +854,20 @@ function change_graph_xrange {
     local queue_var  
     local repeat_i 
     local targetdir
+    
+    echo "Please selecet target name"
+    select targetname in ${item_to_create_graph[@]} "exit"
+    do
+        if [ "${targetname}" = "exit" ]; then
+            exit
+        fi
+    done
 
     echo "Please input x range [x1 x2]"
     echo "if you want to exit, please type [exit]"
     echo -n ">"
 
+    
     while read start_point end_point 
     do
         if [ $start_point = "exit" ]; then
@@ -897,6 +906,7 @@ function change_graph_xrange {
                                 }
                             }' ${targetname}.plt > ${targetname}_xrange[${start_point},${end_point}].plt
                             gnuplot ${targetname}_xrange[${start_point},${end_point}].plt
+                            cd ../..
                         done
                     done    
                 done

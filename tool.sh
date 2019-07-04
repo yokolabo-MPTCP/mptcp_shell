@@ -47,6 +47,7 @@ rcvkernel=$(awk '{if($1~"reciever_kernel"){$1="";print $2;exit;}}' $setting)
 mptcp_ver=$(awk '{if($1~"mptcp_ver"){$1="";print $2;exit;}}' $setting)
 qdisc=$(awk '{if($1~"qdisc"){$1="";print $2;exit;}}' $setting)
 interval=$(awk '{if($1~"interval"){$1="";print $2;exit;}}' $setting)
+item_to_create_graph=($(awk '{if($1~"item_to_create_graph"){$1="";print;exit;}}' $setting))
 memo=$(awk '{if($1~"memo"){$1="";print $2;exit;}}' $setting)
 
 select VAR in "Change graph range" "exit"
