@@ -743,6 +743,7 @@ function process_log_data {
 function build_tex_to_pdf {
     local cgn_ctrl_var
     local item_ver
+    cd tex 
 
     if !(type platex > /dev/null 2>&1); then
        echo "platex does not exist."
@@ -769,7 +770,7 @@ function build_tex_to_pdf {
         rm -f ${cgn_ctrl_var}*.aux
     done
 
-    
+    cd ..
 }
 
 function create_tex_header {
@@ -819,7 +820,8 @@ function create_tex_header {
 function join_header_and_tex_file {
     local var
     local tex_file_name
-   
+    cd tex  
+
     for cgn_ctrl_var in "${cgn_ctrl[@]}" 
     do
         for item_var in "${item_to_create_graph[@]}" 
@@ -849,7 +851,7 @@ function join_header_and_tex_file {
         echo "\end{document}" >> ${tex_file_name}_ave.tex
         rm ./tex_header.txt
     done
-
+    cd ..
 }
 
 function change_graph_xrange {
