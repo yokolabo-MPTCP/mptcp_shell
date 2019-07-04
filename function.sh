@@ -843,3 +843,63 @@ function join_header_and_tex_file {
     done
 
 }
+
+function change_graph_xrange {
+     local cgn_ctrl_var  
+    local rtt1_var  
+    local rtt2_var  
+    local queue_var  
+    local repeat_i 
+    local targetdir
+
+    echo "Please input x range [x1 x2]"
+    echo "if you want to exit, please type [exit]"
+    echo -n ">"
+
+    while read start_point end_point 
+    do
+        if [ $start_point = "exit" ]; then
+            exit
+        fi
+
+        expr "${start_point} + ${end_point}" > /dev/null 2>&1
+        if [ $? -ne 2 ] ; then
+            echo "ok."
+            break
+        else
+            echo "incorrect input. Please retype [x1 x2]"
+            echo -n ">"
+        fi
+    done
+
+    for cgn_ctrl_var in "${cgn_ctrl[@]}" 
+    do
+        for rtt1_var in "${rtt1[@]}"
+        do
+            for rtt2_var in "${rtt2[@]}"
+            do
+                for loss_var in "${loss[@]}"
+                do
+                    for queue_var in "${queue[@]}"
+                    do
+                        for repeat_i in `seq ${repeat}` 
+                        do
+                            targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}
+                            cd targetdir
+                            awk -v startpoint=${start_point} -v encpoint=${end_point}'{
+                                if($2~"xrange"){
+                                    printf("set xrange [%s:%s]\n",start_point,end_point) 
+                                }else{
+                                    print
+                                }
+                            }' ${targetname}.plt > ${targetname}_xrange[${start_point},${end_point}].plt
+                            gnuplot ${targetname}_xrange[${start_point},${end_point}].plt
+                        done
+                    done    
+                done
+            done
+        done
+    done
+
+
+}
