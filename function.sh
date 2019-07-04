@@ -854,6 +854,7 @@ function change_graph_xrange {
     local queue_var  
     local repeat_i 
     local targetdir
+    local scale
     
     echo "Please selecet target name"
     select targetname in ${item_to_create_graph[@]} "exit"
@@ -887,6 +888,7 @@ function change_graph_xrange {
         fi
     done
 
+    scale=`echo "scale=1; (${end_point} - ${start_point}) / 5.0" | bc`
     for cgn_ctrl_var in "${cgn_ctrl[@]}" 
     do
         for rtt1_var in "${rtt1[@]}"
@@ -901,9 +903,11 @@ function change_graph_xrange {
                         do
                             targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
                             cd $targetdir
-                            awk -v startpoint=${start_point} -v encpoint=${end_point}'{
+                            awk -v startpoint=${start_point} -v endpoint=${end_point} -v scale=${scale} '{
                                 if($2~"xrange"){
-                                    printf("set xrange [%s:%s]\n",start_point,end_point) 
+                                    printf("set xrange [%s:%s]\n",startpoint,endpoint) 
+                                }if($2 ~ "xtics"){
+                                    printf("set xtics %s\n",scale) 
                                 }else{
                                     print
                                 }
