@@ -10,6 +10,9 @@ function get_mptcp_version () {
         mptcp_ver=0.92
     elif [[ $kernel == *4.4.110* ]]; then
         mptcp_ver=0.92
+    elif [[ $kernel == *vbox* ]]; then
+        mptcp_ver=vbox
+    else
     else
         mptcp_ver=unknown
         echo "$kernel"
@@ -30,18 +33,18 @@ function configure_ip_address(){
         D2_ip=192.168.4.2
         eth0=eth0
         eth1=eth1
-
-        #receiver_ip=192.168.11.1
-        #D1_ip=192.168.1.2
-        #D2_ip=192.168.2.2
-        #eth0=enp0s3
-        #eth1=enp0s8
      elif [ $mptcp_ver = "0.86" ]; then
         receiver_ip=192.168.13.1
         D1_ip=192.168.3.2
         D2_ip=192.168.4.2
         eth0=eth0
         eth1=eth1
+     elif [ $mptcp_ver = "vbox" ]; then
+        receiver_ip=192.168.11.1
+        D1_ip=192.168.1.2
+        D2_ip=192.168.2.2
+        eth0=enp0s3
+        eth1=eno0s8
     else
         receiver_ip=192.168.13.1
         D1_ip=192.168.3.2
@@ -884,7 +887,7 @@ function change_graph_xrange {
                     do
                         for repeat_i in `seq ${repeat}` 
                         do
-                            targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}
+                            targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
                             cd $targetdir
                             awk -v startpoint=${start_point} -v encpoint=${end_point}'{
                                 if($2~"xrange"){
