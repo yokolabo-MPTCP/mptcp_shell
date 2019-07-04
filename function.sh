@@ -415,8 +415,8 @@ function create_plt_file {
 }
 
 function create_graph_img {
-    targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
-
+    local targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
+    local img_file
     local var
 
     for var in "${item_to_create_graph[@]}" 
@@ -424,6 +424,9 @@ function create_graph_img {
         create_plt_file $var
         cd ${targetdir}
         gnuplot $var.plt 
+        img_file=$var_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png 
+        ln -s  ../../${targetdir}/${img_file} ../../tex/img/
+
         cd ../../
     done
 
@@ -431,23 +434,22 @@ function create_graph_img {
 
 function create_each_tex_file {
     local targetname=$1
-    
+    local tex_name=${cgn_ctrl_var}_${targetname}_${today}.tex
+    local img_name=${targetname}_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png
+
     if [ $# -ne 1 ]; then
         echo "create_plt_file:argument error"
         exit 1
     fi
 
     
-    echo "\begin{figure}[htbp]" >> ${cgn_ctrl_var}_${targetname}_${today}.tex
-    echo "\begin{center}" >> ${cgn_ctrl_var}_${targetname}_${today}.tex
-    echo '\includegraphics[width=95mm]' >> ${cgn_ctrl_var}_${targetname}_${today}.tex
-    echo "{${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th/${targetname}_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png}" >> ${cgn_ctrl}_${targetname}_${today}.tex
-    echo "\caption{${targetname} ${cgn_ctrl_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms LOSS=${loss_var}\% queue=${queue_var}pkt ${repeat_i}回目}" >> ${cgn_ctrl_var}_${targetname}_${today}.tex
+    echo "\begin{figure}[htbp]" >> ${tex_name}
+    echo "\begin{center}" >> ${tex_name}
+    echo '\includegraphics[width=95mm]' >> ${tex_name}
+    echo "{img/${img_name}}" >> ${tex_name} 
+    echo "\caption{${targetname} ${cgn_ctrl_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms LOSS=${loss_var}\% queue=${queue_var}pkt ${repeat_i}回目}" >> ${tex_name} 
     echo '\end{center}
-    \end{figure}' >> ${cgn_ctrl_var}_${targetname}_${today}.tex
-    #if [ $clearpage = 1 ]; then 
-    #    echo "\clearpage" >> ${cgn_ctrl_var}_${targetname}_${today}.tex
-    #fi  
+    \end{figure}' >>${tex_name} 
 }
 
 function create_tex_file {

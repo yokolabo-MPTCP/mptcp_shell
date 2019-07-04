@@ -65,6 +65,7 @@ rcvkernel=$(ssh root@${receiver_ip} 'uname -r')
 nowdir=$today
 mkdir ${today}
 cd ${today}
+mkdir -p tex/img
 
 time=`echo "scale=5; ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} * $duration * $repeat " | bc`
 
