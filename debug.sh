@@ -25,5 +25,7 @@ targetname=(a b c)
 
 select VAR in ${targetname[@]} "exit"
 do
-    echo $VAR
+    if [ $VAR ];then
+      break  
+    fi
 done

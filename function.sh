@@ -43,7 +43,7 @@ function configure_ip_address(){
         D1_ip=192.168.1.2
         D2_ip=192.168.2.2
         eth0=enp0s3
-        eth1=eno0s8
+        eth1=enp0s8
     else
         receiver_ip=192.168.13.1
         D1_ip=192.168.3.2
@@ -858,6 +858,9 @@ function change_graph_xrange {
     echo "Please selecet target name"
     select targetname in ${item_to_create_graph[@]} "exit"
     do
+        if [ $targetname ];then
+            break
+        fi
         if [ "${targetname}" = "exit" ]; then
             exit
         fi
@@ -874,7 +877,7 @@ function change_graph_xrange {
             exit
         fi
 
-        expr ${start_point} + ${end_point} > /dev/null 2>&1
+        expr ${start_point} + ${end_point} > /dev/null 2>&1 # numeric check
         if [ $? -ne 2 ] ; then
             echo "ok."
             break
