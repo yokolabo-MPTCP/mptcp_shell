@@ -29,7 +29,7 @@ author="Izumi Daichi"
 item_to_create_graph=(cwnd packetsout)
 # Kernel variable
 
-no_small_queue=1 #0:default 1:original
+no_small_queue=0 #0:default 1:original
 change_small_queue=10 #default:10
 
 
@@ -67,10 +67,6 @@ mkdir ${today}
 cd ${today}
 mkdir -p tex/img
 
-time=`echo "scale=5; ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} * $duration * $repeat " | bc`
-
-date
-date --date "$time seconds"
 
 create_setting_file
 
@@ -90,6 +86,8 @@ ip link set dev ${eth1} multipath on
 
 set_kernel_variable
 
+date --date "$time seconds"
+echo "終了予想時刻 `date --date "$time seconds"`"
 
 for cgn_ctrl_var in "${cgn_ctrl[@]}" 
 do
