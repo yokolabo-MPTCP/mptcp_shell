@@ -766,14 +766,16 @@ function build_tex_to_pdf {
         do
             platex -halt-on-error ${cgn_ctrl_var}_${item_var}_${today}.tex > /dev/null 2>&1
             dvipdfmx ${cgn_ctrl[$z]}_${item_var}_${today}.dvi > /dev/null 2>&1
-
+            ln -s tex/${cgn_ctrl[$z]}_${item_var}_${today}.pdf ../
         done
         platex -halt-on-error ${cgn_ctrl_var}_throughput_${today}.tex > /dev/null 2>&1
         dvipdfmx ${cgn_ctrl_var}_throughput_${today}.dvi > /dev/null 2>&1
+        ln -s tex/${cgn_ctrl[$z]}_troughput_${today}.pdf ../
 
         platex -halt-on-error ${cgn_ctrl_var}_throughput_${today}_ave.tex > /dev/null 2>&1
         dvipdfmx ${cgn_ctrl_var}_throughput_${today}_ave.dvi > /dev/null 2>&1
-
+        ln -s tex/${cgn_ctrl[$z]}_troughput_${today}_ave.pdf ../
+        
         rm -f ${cgn_ctrl_var}*.log
         rm -f ${cgn_ctrl_var}*.dvi
         rm -f ${cgn_ctrl_var}*.aux
