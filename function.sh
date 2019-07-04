@@ -655,18 +655,24 @@ function create_throughput_graph_plt {
 }
 
 function create_throughput_graph {
-    targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
+    local targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
+    local img_file
     create_throughput_graph_plt
 
     for repeat_i in `seq ${repeat}` 
     do
         cd ${targetdir}/${repeat_i}th
         gnuplot plot.plt
+        img_file=throughput_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_${repeat_i}th.png
+        ln -s  ../../${targetdir}/${repeat_i}/${img_file} ../../tex/img/
         cd ../..
     done
 
     cd ${targetdir}/ave
     gnuplot plot.plt
+    img_file=throughput_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_ave.png
+    ln -s  ../../${targetdir}/${repeat_i}/${img_file} ../../tex/img/
+
     cd ../..
 }
 
@@ -674,13 +680,16 @@ function create_throughput_tex {
     targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
     local repeat_i
     local tex_file_name=${cgn_ctrl_var}_throughput_${today}
+    
+    cd tex
+
 
     for repeat_i in `seq ${repeat}` 
     do
         echo "\begin{figure}[htbp]" >> ${tex_file_name}.tex
         echo "\begin{center}" >> ${tex_file_name}.tex
         echo '\includegraphics[width=95mm]' >> ${tex_file_name}.tex
-        echo "{${targetdir}/${repeat_i}th/throughput_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_${repeat_i}th.png}" >> ${tex_file_name}.tex
+        echo "{img/throughput_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_${repeat_i}th.png}" >> ${tex_file_name}.tex
         echo "\caption{${cgn_ctrl_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms LOSS=${loss_var}\% ${repeat_i}回目}" >> ${tex_file_name}.tex
         echo '\end{center}
         \end{figure}' >> ${tex_file_name}.tex
@@ -696,7 +705,7 @@ function create_throughput_tex {
     echo '\end{center}
     \end{figure}' >> ${tex_file_name}_ave.tex
 
-
+    cd ..
 }
 
 function process_log_data {
