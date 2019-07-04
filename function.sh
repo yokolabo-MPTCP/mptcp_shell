@@ -770,11 +770,11 @@ function build_tex_to_pdf {
         done
         platex -halt-on-error ${cgn_ctrl_var}_throughput_${today}.tex > /dev/null 2>&1
         dvipdfmx ${cgn_ctrl_var}_throughput_${today}.dvi > /dev/null 2>&1
-        ln -s tex/${cgn_ctrl[$z]}_troughput_${today}.pdf ../
+        ln -s tex/${cgn_ctrl[$z]}_throughput_${today}.pdf ../
 
         platex -halt-on-error ${cgn_ctrl_var}_throughput_${today}_ave.tex > /dev/null 2>&1
         dvipdfmx ${cgn_ctrl_var}_throughput_${today}_ave.dvi > /dev/null 2>&1
-        ln -s tex/${cgn_ctrl[$z]}_troughput_${today}_ave.pdf ../
+        ln -s tex/${cgn_ctrl[$z]}_throughput_${today}_ave.pdf ../
         
         rm -f ${cgn_ctrl_var}*.log
         rm -f ${cgn_ctrl_var}*.dvi
