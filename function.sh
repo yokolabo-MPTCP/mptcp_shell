@@ -862,7 +862,7 @@ function change_graph_xrange {
             exit
         fi
 
-        expr "${start_point} + ${end_point}" > /dev/null 2>&1
+        expr ${start_point} + ${end_point} > /dev/null 2>&1
         if [ $? -ne 2 ] ; then
             echo "ok."
             break
@@ -885,7 +885,7 @@ function change_graph_xrange {
                         for repeat_i in `seq ${repeat}` 
                         do
                             targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}
-                            cd targetdir
+                            cd $targetdir
                             awk -v startpoint=${start_point} -v encpoint=${end_point}'{
                                 if($2~"xrange"){
                                     printf("set xrange [%s:%s]\n",start_point,end_point) 

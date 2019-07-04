@@ -52,7 +52,7 @@ memo=$(awk '{if($1~"memo"){$1="";print $2;exit;}}' $setting)
 select VAR in "Change graph range" "exit"
 do
     if [ "$VAR" = "Change graph range" ];then
-        change_gragh_xrange
+        change_graph_xrange
         break
     elif [ "$VAR" = "exit" ];then
         exit
