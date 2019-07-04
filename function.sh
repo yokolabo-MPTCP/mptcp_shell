@@ -700,7 +700,7 @@ function create_throughput_tex {
     echo "\begin{figure}[htbp]" >> ${tex_file_name}_ave.tex
     echo "\begin{center}" >> ${tex_file_name}_ave.tex
     echo '\includegraphics[width=95mm]' >> ${tex_file_name}_ave.tex
-    echo "{${targetdir}/ave/throughput_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_ave.png}" >> ${cgn_ctrl_var}_throughput_${today}_ave.tex
+    echo "{img/throughput_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_ave.png}" >> ${cgn_ctrl_var}_throughput_${today}_ave.tex
     echo "\caption{${cgn_ctrl_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms LOSS=${loss_var}\% ${repeat_i}回平均}" >> ${cgn_ctrl_var}_throughput_${today}_ave.tex
     echo '\end{center}
     \end{figure}' >> ${tex_file_name}_ave.tex
@@ -764,15 +764,15 @@ function build_tex_to_pdf {
     do
         for item_var in "${item_to_create_graph[@]}" 
         do
-            platex -halt-on-error ${cgn_ctrl_var}_${item_var}_${today}.tex > /dev/null
-            dvipdfmx ${cgn_ctrl[$z]}_${item_var}_${today}.dvi > /dev/null
+            platex -halt-on-error ${cgn_ctrl_var}_${item_var}_${today}.tex > /dev/null 2>&1
+            dvipdfmx ${cgn_ctrl[$z]}_${item_var}_${today}.dvi > /dev/null 2>&1
 
         done
-        platex -halt-on-error ${cgn_ctrl_var}_throughput_${today}.tex > /dev/null
-        dvipdfmx ${cgn_ctrl_var}_throughput_${today}.dvi > /dev/null
+        platex -halt-on-error ${cgn_ctrl_var}_throughput_${today}.tex > /dev/null 2>&1
+        dvipdfmx ${cgn_ctrl_var}_throughput_${today}.dvi > /dev/null 2>&1
 
-        platex -halt-on-error ${cgn_ctrl_var}_throughput_${today}_ave.tex > /dev/null
-        dvipdfmx ${cgn_ctrl_var}_throughput_${today}_ave.dvi > /dev/null
+        platex -halt-on-error ${cgn_ctrl_var}_throughput_${today}_ave.tex > /dev/null 2>&1
+        dvipdfmx ${cgn_ctrl_var}_throughput_${today}_ave.dvi > /dev/null 2>&1
 
         rm -f ${cgn_ctrl_var}*.log
         rm -f ${cgn_ctrl_var}*.dvi
