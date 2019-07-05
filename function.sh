@@ -874,23 +874,26 @@ function change_graph_xrange {
             exit
         fi
 
-        expr ${start_point} + ${end_point} > /dev/null 2>&1 # numeric check
-        if [ $? -ne 2 ] ; then
-            echo "ok."
-            break
-        else
-            echo "incorrect input. Please retype [x1 x2]"
-            echo -n ">"
-        fi
+        #expr ${start_point} + ${end_point} > /dev/null 2>&1 # numeric check
+        #if [ $? -ne 2 ] ; then
+            #echo "check... ok."
+            #break
+        #else
+            #echo "incorrect input. Please retype [x1 x2]"
+            #echo -n ">"
+        #fi
     done
 
-    scale=`echo "scale=1; (${end_point} - ${start_point}) / 5.0" | bc`
+    scale=`echo "scale=5; (${end_point} - ${start_point}) / 5.0" | bc`
     for cgn_ctrl_var in "${cgn_ctrl[@]}" 
     do
         for rtt1_var in "${rtt1[@]}"
         do
             for rtt2_var in "${rtt2[@]}"
             do
+                if [ ${rtt1_var} != ${rtt2_var} ] ; then
+                    continue
+                fi
                 for loss_var in "${loss[@]}"
                 do
                     for queue_var in "${queue[@]}"
@@ -898,7 +901,8 @@ function change_graph_xrange {
                         for repeat_i in `seq ${repeat}` 
                         do
                             targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
-                            cd $targetdir
+                            echo -n "$targetdir ..."                           
+				cd $targetdir
                             awk -v startpoint=${start_point} -v endpoint=${end_point} -v scale=${scale} '{
                                 if($2~"xrange"){
                                     printf("set xrange [%s:%s]\n",startpoint,endpoint) 
@@ -909,6 +913,7 @@ function change_graph_xrange {
                                 }
                             }' ${targetname}.plt > ${targetname}_xrange[${start_point},${end_point}].plt
                             gnuplot ${targetname}_xrange[${start_point},${end_point}].plt
+                            echo "done"
                             cd ../..
                         done
                     done    

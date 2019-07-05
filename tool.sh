@@ -32,6 +32,7 @@ else
     exit
 fi
 
+echo "Please select you want to do."
 select VAR in "Change graph range" "Build tex" "exit"
 do
     if [ "$VAR" = "Change graph range" ];then
