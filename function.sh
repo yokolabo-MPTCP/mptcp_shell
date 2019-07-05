@@ -693,7 +693,10 @@ function process_log_data {
     local repeat_i 
     local targetdir
     local app_meta=()
-    echo -n "processing data ..."
+    local total_count=`echo "scale=1; ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} * $repeat " | bc`
+    local current_count=0
+
+
     for cgn_ctrl_var in "${cgn_ctrl[@]}" 
     do
         for rtt1_var in "${rtt1[@]}"
@@ -709,12 +712,16 @@ function process_log_data {
                     do
                         for repeat_i in `seq ${repeat}` 
                         do
+                            percent=`echo "scale=3; $current_count / $total_count * 100 " | bc`
+                            percent=`echo "scale=1; $percent / 1 " | bc`
+                            echo -ne "processing data ...${percent}% (${current_count} / ${total_count})\r"
                             separate_cwnd
                             get_app_meta
                             extract_cwnd_each_flow
                             count_mptcp_state
                             create_graph_img
                             create_tex_file
+                            (( current_count++))
                         done
                         calc_throughput_ave
                     done    
@@ -724,7 +731,7 @@ function process_log_data {
             done
         done
     done
-    echo "done"
+    echo "processing data ...done                                    "
 }
 
 function build_tex_to_pdf {
