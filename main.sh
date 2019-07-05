@@ -11,49 +11,17 @@ else
     exit
 fi
 
-# User Setting 
-
-cgn_ctrl=(lia)          # congestion control e.g. lia olia balia wvegas cubic reno
-rtt1=(50)               # delay of netem [ms]
-rtt2=(50)               
-loss=(0)                # Packet drop rate of netem [%]
-queue=(1000)  # The number of IFQ size [packet]
-duration=100            # Communication Time [s]
-app_delay=0.5           # Time of start time difference [s]
-repeat=1             # The number of repeat
-app=3                   # The number of Application (iperf)
-qdisc=pfifo_fast        # AQM (Active queue management) e.g. pfifo_fast red fq_codel
-memo=$1
-
-author="Izumi Daichi"
-item_to_create_graph=(cwnd packetsout)
-# Kernel variable
-
-kariya_small_queue=0 #0:default 1:original
-#change_small_queue=10 #default:10
-
-
+if [ -e "config.sh" ]; then
+    source "config.sh"
+else
+    echo "config.sh does not exist."
+    exit
+fi
 
 kernel=$(uname -r)
 mptcp_ver=$(get_mptcp_version)
 configure_ip_address $mptcp_ver
 check_network_available
-
-#fixed
-
-interval=1
-
-
-band1=100
-band2=100
-
-subflownum=2
-
-
-#reciver setting
-receiver_dir="/home/yokolabo/experiment"
-
-
 
 today=$(date "+%Y%m%d_%H-%M-%S")
 rcvkernel=$(ssh root@${receiver_ip} 'uname -r')
@@ -61,17 +29,7 @@ nowdir=$today
 mkdir ${today}
 cd ${today}
 mkdir -p tex/img
-
-
-create_setting_file
-
-
-echo "------SETTING---------------------------------"
-cat setting.txt
-tc qdisc show
-echo "----------------------------------------------"
-
-
+cp -f config.sh $today
 
 ip link set dev ${eth0} multipath on
 ip link set dev ${eth1} multipath on
@@ -79,7 +37,8 @@ ip link set dev ${eth1} multipath on
 #ethtool -s ${eth0} speed ${band1} duplex full
 #ethtool -s ${eth1} speed ${band2} duplex full
 
-set_kernel_variable
+set_default_kernel_parameter
+set_user_kernel_parameter
 
 time=`echo "scale=5; ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} * ($duration+60) * $repeat " | bc`
 echo "終了予想時刻 `date --date "$time seconds"`"
@@ -111,11 +70,16 @@ do
 						mkdir ${nowdir}/${repeat_i}th/log
 						mkdir ${nowdir}/${repeat_i}th/throughput
 
+<<<<<<< HEAD
 						echo "${cgn_ctrl_var} RTT1=${rtt1_var}ms, RTT2=${rtt2_var}ms, LOSS=${loss_var}, queue=${queue_var}pkt, ${repeat_i}回目"
+=======
+						echo -n "${cgn_ctrl_var}_RTT1=${rtt1_var}ms, RTT2=${rtt2_var}ms, LOSS=${loss_var}, queue=${queue_var}pkt, ${repeat_i}回目 ..."
+>>>>>>> develop
 
                         clean_log_sender_and_receiver
                         run_iperf
 						format_and_copy_log
+                        echo "done"
 					done
 				done
 			done
