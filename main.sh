@@ -42,17 +42,12 @@ check_network_available
 #fixed
 
 interval=1
-temp=0
 
 
 band1=100
 band2=100
 
 subflownum=2
-
-timeflag=1
-clearpage=0
-
 
 
 #reciver setting
