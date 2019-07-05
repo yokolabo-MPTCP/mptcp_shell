@@ -18,7 +18,6 @@ else
     exit
 fi
 
-
 kernel=$(uname -r)
 mptcp_ver=$(get_mptcp_version)
 configure_ip_address $mptcp_ver
@@ -30,6 +29,7 @@ nowdir=$today
 mkdir ${today}
 cd ${today}
 mkdir -p tex/img
+cp -f config.sh $today
 
 ip link set dev ${eth0} multipath on
 ip link set dev ${eth1} multipath on
