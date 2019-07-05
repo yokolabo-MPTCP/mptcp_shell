@@ -28,12 +28,18 @@ receiver_dir="/home/yokolabo/experiment"
 mptcp_enabled=1
 mptcp_debug=1
 
+tcp_limit_output_bytes=262144   # default:262144
+tcp_pacing_ca_ratio=120         # default:120
+tcp_pacing_ss_ratio=200         # default:200
+
 # USER ADDED KERNEL PARAMETER SETTING
 # If you added kernel parameter, please describe below. 
 
-kariya_small_queue=0    # 0:default 1:original fixed limit of TSQ
+kariya_small_queue=0    # 0:default 1: fixed limit of TSQ
+izumi_pacing_rate=0     # 0:default 1: packetsout only of calculation of pacingrate
 
 # USER KERNEL PARAMETER FUNCTION
 function set_user_kernel_parameter {
     sysctl net.mptcp.kariya_small_queue=${kariya_small_queue}
+    sysctl net.mptcp.izumi_pacing_rate=${izumi_pacing_rate}
 }

@@ -82,6 +82,9 @@ function check_network_available {
 function set_default_kernel_parameter {
     sysctl net.mptcp.mptcp_debug=${mptcp_debug}
     sysctl net.mptcp.mptcp_enabled=${mptcp_enabled}
+    sysctl net.ipv4.tcp_limit_output_bytes=${tcp_limit_output_bytes}
+    sysctl net.ipv4.tcp_pacing_ca_ratio=${tcp_pacing_ca_ratio}
+    sysctl net.ipv4.tcp_pacing_ss_ratio=${tcp_pacing_ss_ratio}
 
     if [ $mptcp_ver = 0.86 ]; then
         sysctl net.mptcp.mptcp_no_recvbuf_auto=$no_rcv
