@@ -50,10 +50,13 @@ interval=$(awk '{if($1~"interval"){$1="";print $2;exit;}}' $setting)
 item_to_create_graph=($(awk '{if($1~"item_to_create_graph"){$1="";print;exit;}}' $setting))
 memo=$(awk '{if($1~"memo"){$1="";print $2;exit;}}' $setting)
 
-select VAR in "Change graph range" "exit"
+select VAR in "Change graph range" "Build tex" "exit"
 do
     if [ "$VAR" = "Change graph range" ];then
         change_graph_xrange
+        break
+    elif [ "$VAR" = "Build tex" ];then
+        build_tex_to_pdf 
         break
     elif [ "$VAR" = "exit" ];then
         exit
