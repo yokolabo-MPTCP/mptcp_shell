@@ -17,10 +17,10 @@ cgn_ctrl=(lia)          # congestion control e.g. lia olia balia wvegas cubic re
 rtt1=(50)               # delay of netem [ms]
 rtt2=(50)               
 loss=(0)                # Packet drop rate of netem [%]
-queue=(100 1000)  # The number of IFQ size [packet]
-duration=1            # Communication Time [s]
+queue=(1000)  # The number of IFQ size [packet]
+duration=100            # Communication Time [s]
 app_delay=0.5           # Time of start time difference [s]
-repeat=2             # The number of repeat
+repeat=1             # The number of repeat
 app=3                   # The number of Application (iperf)
 qdisc=pfifo_fast        # AQM (Active queue management) e.g. pfifo_fast red fq_codel
 memo=$1
@@ -29,8 +29,8 @@ author="Izumi Daichi"
 item_to_create_graph=(cwnd packetsout)
 # Kernel variable
 
-no_small_queue=0 #0:default 1:original
-change_small_queue=10 #default:10
+kariya_small_queue=0 #0:default 1:original
+#change_small_queue=10 #default:10
 
 
 
@@ -86,7 +86,7 @@ ip link set dev ${eth1} multipath on
 
 set_kernel_variable
 
-date --date "$time seconds"
+time=`echo "scale=5; ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} * ($duration+60) * $repeat " | bc`
 echo "終了予想時刻 `date --date "$time seconds"`"
 
 for cgn_ctrl_var in "${cgn_ctrl[@]}" 
@@ -116,7 +116,7 @@ do
 						mkdir ${nowdir}/${repeat_i}th/log
 						mkdir ${nowdir}/${repeat_i}th/throughput
 
-						echo "${cgn_ctrl_var}_RTT1=${rtt1_var}ms, RTT2=${rtt2_var}ms, LOSS=${loss_var}, queue=${queue_var}pkt, ${repeat_i}回目"
+						echo "${cgn_ctrl_var} RTT1=${rtt1_var}ms, RTT2=${rtt2_var}ms, LOSS=${loss_var}, queue=${queue_var}pkt, ${repeat_i}回目"
 
                         clean_log_sender_and_receiver
                         run_iperf
