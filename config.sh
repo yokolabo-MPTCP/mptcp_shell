@@ -35,5 +35,5 @@ kariya_small_queue=0    # 0:default 1:original fixed limit of TSQ
 
 # USER KERNEL PARAMETER FUNCTION
 function set_user_kernel_parameter {
-    sysctl net.mptcp.kariya_small_queue=kariya_small_queue
+    sysctl net.mptcp.kariya_small_queue=${kariya_small_queue}
 }

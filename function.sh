@@ -80,8 +80,8 @@ function check_network_available {
 }
 
 function set_default_kernel_parameter {
-    sysctl net.mptcp.mptcp_debug=mptcp_debug
-    sysctl net.mptcp.mptcp_enabled=mptcp_enabled
+    sysctl net.mptcp.mptcp_debug=${mptcp_debug}
+    sysctl net.mptcp.mptcp_enabled=${mptcp_enabled}
 
     if [ $mptcp_ver = 0.86 ]; then
         sysctl net.mptcp.mptcp_no_recvbuf_auto=$no_rcv
