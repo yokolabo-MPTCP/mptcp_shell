@@ -3,12 +3,12 @@
 # EXPERIMENT SETTING
 
 author="Izumi Daichi"
-cgn_ctrl=(lia)          # congestion control e.g. lia olia balia wvegas cubic reno
+cgn_ctrl=(lia olia wvegas)          # congestion control e.g. lia olia balia wvegas cubic reno
 rtt1=(5 50 200)               # delay of netem [ms]
 rtt2=(5 50 200)               
 loss=(0 0.001)                # Packet drop rate of netem [%]
 queue=(100 1000 20000)        # The number of IFQ size [packet]
-duration=20              # Communication Time [s]
+duration=100              # Communication Time [s]
 app_delay=0.5           # Time of start time difference [s]
 repeat=1                # The number of repeat
 app=3                   # The number of Application (iperf)
@@ -36,7 +36,7 @@ tcp_pacing_ss_ratio=200         # default:200
 # If you added kernel parameter, please describe below. 
 
 mptcp_kariya_small_queue=0    # 0:default 1: fixed limit of TSQ
-mptcp_izumi_pacing_rate=0     # 0:default 1: packetsout only of calculation of pacingrate
+mptcp_izumi_pacing_rate=1     # 0:default 1: packetsout only of calculation of pacingrate
 
 # USER KERNEL PARAMETER FUNCTION
 function set_user_kernel_parameter {

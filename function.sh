@@ -97,8 +97,8 @@ function set_default_kernel_parameter {
     
 function set_netem_rtt_and_loss {
     
-    ssh root@${D1_ip} "./tc.sh 0 `expr ${rtt1[$j]} / 2` 0 && ./tc.sh 1 `expr ${rtt1[$j]} / 2` ${loss[$l]}" > /dev/null
-    ssh root@${D2_ip} "./tc.sh 0 `expr ${rtt2[$m]} / 2` 0 && ./tc.sh 1 `expr ${rtt2[$m]} / 2` ${loss[$l]}" > /dev/null
+    ssh root@${D1_ip} "./tc.sh 0 `expr ${rtt1_var} / 2` 0 && ./tc.sh 1 `expr ${rtt1_var} / 2` ${loss_var}" > /dev/null
+    ssh root@${D2_ip} "./tc.sh 0 `expr ${rtt2_var} / 2` 0 && ./tc.sh 1 `expr ${rtt2_var} / 2` ${loss_var}" > /dev/null
     
 }
 
