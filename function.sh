@@ -56,60 +56,33 @@ function configure_ip_address(){
 }
 
 function check_network_available {
+   echo -n "checking network is available ..."
    ping $receiver_ip -c 1 >> /dev/null
    if [ $? -ne 0 ]; then
+        echo "ng"
         echo "error: can't access to receiver [$receiver_ip]"
         exit
    fi
    ping $D1_ip -c 1 >> /dev/null
    if [ $? -ne 0 ]; then
+        echo "ng"
         echo "error: can't access to D1 [$D1_ip]"
         exit
    fi
     ping $D2_ip -c 1 >> /dev/null
    if [ $? -ne 0 ]; then
+        echo "ng"
         echo "error: can't access to D2 [$D2_ip]"
         exit
    fi
 
-    echo "network is ok."
+    echo " ok."
 }
 
-function create_setting_file {
-    
-    echo "Date ${today}" > setting.txt
-    echo "sender_kernel ${kernel}" >> setting.txt
-    echo "receiver_kernel ${rcvkernel}" >> setting.txt
-    echo "mptcp_ver ${mptcp_ver}" >> setting.txt
-    echo "conguestion_control ${cgn_ctrl[@]}" >> setting.txt
-    echo "qdisc ${qdisc}" >> setting.txt
-    echo "app ${app}" >> setting.txt
-    echo "rtt1 ${rtt1[@]}" >> setting.txt
-    echo "rtt2 ${rtt2[@]}" >> setting.txt
-    echo "loss ${loss[@]}" >> setting.txt
-    echo "queue ${queue[@]}" >> setting.txt
-    echo "duration ${duration}" >> setting.txt
-    echo "app_delay ${app_delay}" >> setting.txt
-    echo "repeat ${repeat}" >> setting.txt
-    echo "interval ${interval}" >> setting.txt
-    echo "no_cwr ${no_cwr}" >> setting.txt
-    echo "no_rcv ${no_rcv}" >> setting.txt
-    echo "no_small_queue ${no_small_queue}" >> setting.txt
-    echo "qdisc ${qdisc}" >> setting.txt
-    echo "subflownum ${subflownum}" >> setting.txt
-    echo "item_to_create_graph ${item_to_create_graph[@]}" >> setting.txt
-    echo "memo ${memo}" >> setting.txt
+function set_default_kernel_parameter {
+    sysctl net.mptcp.mptcp_debug=mptcp_debug
+    sysctl net.mptcp.mptcp_enabled=mptcp_enabled
 
-
-}
-
-function set_kernel_variable {
-    sysctl net.mptcp.mptcp_debug=1
-    sysctl net.mptcp.mptcp_enabled=1
-    #sysctl net.core.default_qdisc=${qdisc}
-    #sysctl net.mptcp.mptcp_no_small_queue=${no_small_queue}
-    #sysctl net.mptcp.mptcp_change_small_queue=${change_small_queue}
-    #sysctl net.mptcp.mptcp_no_cwr=${no_cwr}
     if [ $mptcp_ver = 0.86 ]; then
         sysctl net.mptcp.mptcp_no_recvbuf_auto=$no_rcv
         sysctl net.core.netdev_debug=0
@@ -141,6 +114,7 @@ function set_txqueuelen {
 function run_iperf {
     local app_i 
     local delay
+    local interval=1
     for app_i in `seq ${app}` 
     do
 		delay=`echo "scale=5; $duration + ($app - $app_i) * $app_delay " | bc`
@@ -716,6 +690,7 @@ function process_log_data {
     local repeat_i 
     local targetdir
     local app_meta=()
+    echo -n "processing data ..."
     for cgn_ctrl_var in "${cgn_ctrl[@]}" 
     do
         for rtt1_var in "${rtt1[@]}"
@@ -746,7 +721,7 @@ function process_log_data {
             done
         done
     done
-
+    echo "done"
 }
 
 function build_tex_to_pdf {
