@@ -4,11 +4,11 @@
 
 author="Izumi Daichi"
 cgn_ctrl=(lia)          # congestion control e.g. lia olia balia wvegas cubic reno
-rtt1=(50)               # delay of netem [ms]
-rtt2=(50)               
-loss=(0)                # Packet drop rate of netem [%]
-queue=(100 1000)        # The number of IFQ size [packet]
-duration=1              # Communication Time [s]
+rtt1=(5 50 200)               # delay of netem [ms]
+rtt2=(5 50 200)               
+loss=(0 0.001)                # Packet drop rate of netem [%]
+queue=(100 1000 20000)        # The number of IFQ size [packet]
+duration=100              # Communication Time [s]
 app_delay=0.5           # Time of start time difference [s]
 repeat=1                # The number of repeat
 app=3                   # The number of Application (iperf)
@@ -18,7 +18,7 @@ band2=100
 qdisc=pfifo_fast        # AQM (Active queue management) e.g. pfifo_fast red fq_codel
 memo=$1
 
-item_to_create_graph=(cwnd packetsout)
+item_to_create_graph=(cwnd packetsout pacingrate shiftpacing limit wmemalloc)
 
 #reciver setting
 receiver_dir="/home/yokolabo/experiment"
@@ -35,11 +35,11 @@ tcp_pacing_ss_ratio=200         # default:200
 # USER ADDED KERNEL PARAMETER SETTING
 # If you added kernel parameter, please describe below. 
 
-kariya_small_queue=0    # 0:default 1: fixed limit of TSQ
-izumi_pacing_rate=0     # 0:default 1: packetsout only of calculation of pacingrate
+mptcp_kariya_small_queue=0    # 0:default 1: fixed limit of TSQ
+mptcp_izumi_pacing_rate=0     # 0:default 1: packetsout only of calculation of pacingrate
 
 # USER KERNEL PARAMETER FUNCTION
 function set_user_kernel_parameter {
-    sysctl net.mptcp.kariya_small_queue=${kariya_small_queue}
-    sysctl net.mptcp.izumi_pacing_rate=${izumi_pacing_rate}
+    sysctl net.mptcp.mptcp_kariya_small_queue=${mptcp_kariya_small_queue}
+    sysctl net.mptcp.mptcp_izumi_pacing_rate=${mptcp_izumi_pacing_rate}
 }

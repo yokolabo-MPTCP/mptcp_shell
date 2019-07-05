@@ -27,9 +27,9 @@ today=$(date "+%Y%m%d_%H-%M-%S")
 rcvkernel=$(ssh root@${receiver_ip} 'uname -r')
 nowdir=$today
 mkdir ${today}
+cp -f config.sh $today
 cd ${today}
 mkdir -p tex/img
-cp -f config.sh $today
 
 ip link set dev ${eth0} multipath on
 ip link set dev ${eth1} multipath on
@@ -70,11 +70,7 @@ do
 						mkdir ${nowdir}/${repeat_i}th/log
 						mkdir ${nowdir}/${repeat_i}th/throughput
 
-<<<<<<< HEAD
-						echo "${cgn_ctrl_var} RTT1=${rtt1_var}ms, RTT2=${rtt2_var}ms, LOSS=${loss_var}, queue=${queue_var}pkt, ${repeat_i}回目"
-=======
 						echo -n "${cgn_ctrl_var}_RTT1=${rtt1_var}ms, RTT2=${rtt2_var}ms, LOSS=${loss_var}, queue=${queue_var}pkt, ${repeat_i}回目 ..."
->>>>>>> develop
 
                         clean_log_sender_and_receiver
                         run_iperf
