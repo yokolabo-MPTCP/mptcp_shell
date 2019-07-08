@@ -11,23 +11,33 @@ else
     exit
 fi
 
-if [ -e "config.sh" ]; then
-    source "config.sh"
+if [ $# -eq 1 ]; then
+    memo=$1
+    configfile="config.sh"
+elif [$# -eq 2 ]; then
+    memo=$1
+    configfile=$2
 else
-    echo "config.sh does not exist."
+    usage_exit 
+fi
+
+if [ -e "${configfile}" ]; then
+    source "${configfile}"
+else
+    echo "${configfile} does not exist."
     exit
 fi
 
 kernel=$(uname -r)
+rcvkernel=$(ssh root@${receiver_ip} 'uname -r')
 mptcp_ver=$(get_mptcp_version)
 configure_ip_address $mptcp_ver
 check_network_available
 
 today=$(date "+%Y%m%d_%H-%M-%S")
-rcvkernel=$(ssh root@${receiver_ip} 'uname -r')
 nowdir=$today
 mkdir ${today}
-cp -f config.sh $today
+cp -f ${configname} $today/config.sh
 cd ${today}
 mkdir -p tex/img
 

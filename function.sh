@@ -1,5 +1,15 @@
 #!/bin/bash
 
+function usage_exit() {
+
+    echo "Usage: $0 \"[memo of this exp.]\""
+    echo "If you want to other configulation file (default: config.sh),"
+    echo "then you can do as follow."
+    echo "Usage: $0 [memo of this exp.] [name of config.sh]"
+    exit
+
+}
+
 function get_mptcp_version () {
 
     local kernel=$(uname -r)
