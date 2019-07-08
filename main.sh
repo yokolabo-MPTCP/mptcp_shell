@@ -14,7 +14,7 @@ fi
 if [ $# -eq 1 ]; then
     memo=$1
     configfile="config.sh"
-elif [$# -eq 2 ]; then
+elif [ $# -eq 2 ]; then
     memo=$1
     configfile=$2
 else
@@ -29,23 +29,24 @@ else
 fi
 
 kernel=$(uname -r)
-rcvkernel=$(ssh root@${receiver_ip} 'uname -r')
 mptcp_ver=$(get_mptcp_version)
 configure_ip_address $mptcp_ver
 check_network_available
 
+rcvkernel=$(ssh root@${receiver_ip} 'uname -r')
+
 today=$(date "+%Y%m%d_%H-%M-%S")
 nowdir=$today
 mkdir ${today}
-cp -f ${configname} $today/config.sh
+cp -f ${configfile} ${today}/config.sh
 cd ${today}
 mkdir -p tex/img
 
 ip link set dev ${eth0} multipath on
 ip link set dev ${eth1} multipath on
 
-#ethtool -s ${eth0} speed ${band1} duplex full
-#ethtool -s ${eth1} speed ${band2} duplex full
+ethtool -s ${eth0} speed ${band1} duplex full
+ethtool -s ${eth1} speed ${band2} duplex full
 
 set_default_kernel_parameter
 set_user_kernel_parameter
