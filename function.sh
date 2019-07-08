@@ -366,8 +366,8 @@ function create_plt_file {
     set key spacing 8
     set size ratio 0.5
     set xlabel "time[s]"
-    set ylabel "number of packets"
     set datafile separator " " ' > ${targetdir}/${targetname}.plt
+    echo "set ylabel \"${targetname}\""
     echo "set xtics $scale" >> ${targetdir}/${targetname}.plt
     echo "set xrange [0:${duration}]" >> ${targetdir}/${targetname}.plt
     echo "set output \"${targetname}_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png\"" >> ${targetdir}/${targetname}.plt
@@ -506,6 +506,7 @@ function create_throughput_graph_plt {
     local app_i
     local queue_var
     local throughput
+    local yrangemax=$(( band1 + band2 ))
     targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
     mkdir ${targetdir}
     for repeat_i in `seq ${repeat}` 
@@ -552,7 +553,7 @@ function create_throughput_graph_plt {
         set boxwidth 0.5 relative 
         set datafile separator " " ' > ./${targetdir}/${repeat_i}th/plot.plt
         echo "set title \"throughput ${targetdir} ${repeat_i}th\"" >> ./${targetdir}/${repeat_i}th/plot.plt 
-        echo "set yrange [0:200]" >> ./${targetdir}/${repeat_i}th/plot.plt
+        echo "set yrange [0:${yrangemax}]" >> ./${targetdir}/${repeat_i}th/plot.plt
         echo "set output \"throughput_${targetdir}_${repeat_i}th.png\"" >> ./${targetdir}/${repeat_i}th/plot.plt
 
         echo -n "plot " >> ./${targetdir}/${repeat_i}th/plot.plt
@@ -611,7 +612,7 @@ function create_throughput_graph_plt {
     set boxwidth 0.5 relative 
     set datafile separator " " ' > ./${targetdir}/ave/plot.plt
     echo "set title \"throughput ${targetdir} ${repeat_i} times average \"" >> ./${targetdir}/ave/plot.plt 
-    echo "set yrange [0:200]" >> ./${targetdir}/ave/plot.plt
+    echo "set yrange [0:${yrangemax}]" >> ./${targetdir}/ave/plot.plt
     echo "set output \"throughput_${targetdir}_ave.png\"" >> ./${targetdir}/ave/plot.plt
 
     echo -n "plot " >> ./${targetdir}/ave/plot.plt
