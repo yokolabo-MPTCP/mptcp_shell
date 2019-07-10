@@ -129,6 +129,11 @@ function set_qdisc {
     tc qdisc replace dev ${eth1} root ${qdisc}
 }
 
+function set_bandwidth {
+    ethtool -s ${eth0} speed ${band1} duplex full
+    ethtool -s ${eth1} speed ${band2} duplex full
+}
+
 function run_iperf {
     local app_i 
     local delay
