@@ -45,8 +45,8 @@ mkdir -p tex/img
 ip link set dev ${eth0} multipath on
 ip link set dev ${eth1} multipath on
 
-ethtool -s ${eth0} speed ${band1} duplex full
-ethtool -s ${eth1} speed ${band2} duplex full
+#ethtool -s ${eth0} speed ${band1} duplex full
+#ethtool -s ${eth1} speed ${band2} duplex full
 
 set_default_kernel_parameter
 set_user_kernel_parameter

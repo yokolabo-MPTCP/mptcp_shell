@@ -40,8 +40,8 @@ function configure_ip_address(){
         receiver_ip=192.168.15.2
         D1_ip=192.168.3.2
         D2_ip=192.168.4.2
-        eth0=eth0
-        eth1=eth1
+        eth0=enp0s31f6
+        eth1=enp2s0
      elif [ $mptcp_ver = "0.86" ]; then
         receiver_ip=192.168.13.1
         D1_ip=192.168.3.2
@@ -120,8 +120,8 @@ function clean_log_sender_and_receiver {
 
 function set_txqueuelen {
     
-    ifconfig ${eth0} txqueuelen ${queue[$k]}
-    ifconfig ${eth1} txqueuelen ${queue[$k]}
+    ip link set dev ${eth0} txqueuelen ${queue_var}
+    ip link set dev ${eth1} txqueuelen ${queue_var}
 }
 
 function run_iperf {
