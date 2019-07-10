@@ -124,6 +124,11 @@ function set_txqueuelen {
     ip link set dev ${eth1} txqueuelen ${queue_var}
 }
 
+function set_qdisc {
+    tc qdisc replace dev ${eth0} root ${qdisc}
+    tc qdisc replace dev ${eth1} root ${qdisc}
+}
+
 function run_iperf {
     local app_i 
     local delay
@@ -755,7 +760,7 @@ function build_tex_to_pdf {
        return 1
     fi
 
-    echo "Build tex file ..."
+    echo -n "Build tex file ..."
     for cgn_ctrl_var in "${cgn_ctrl[@]}" 
     do
         for item_var in "${item_to_create_graph[@]}" 
@@ -775,6 +780,8 @@ function build_tex_to_pdf {
         rm -f ${cgn_ctrl_var}*.log
         rm -f ${cgn_ctrl_var}*.dvi
         rm -f ${cgn_ctrl_var}*.aux
+    
+	echo "done"
     done
 
     cd ..
