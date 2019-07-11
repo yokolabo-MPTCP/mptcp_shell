@@ -376,14 +376,17 @@ function create_plt_file {
         for(i=1;i<=NF;i++){
             if( match ($i, targetname2) == 1){
                 print i+1;
+		exit
             }
         }
-        exit
+	if(NR>100){
+            exit
+        }
     }' ./${targetdir}/log/cwnd1_subflow1.dat)
     echo 'set terminal emf enhanced "Arial, 24"
     set terminal png size 960,720
     set key outside
-    set key spacing 8
+    set key spacing 3
     set size ratio 0.5
     set xlabel "time[s]"
     set datafile separator " " ' > ${targetdir}/${targetname}.plt
