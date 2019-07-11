@@ -1,9 +1,10 @@
-#!/bin/bash
+#!/bin/bash -u
 umask 000
 clear
 
 cwd=`dirname $0`
 cd $cwd
+
 if [ -e "function.sh" ]; then
     source "function.sh"
 else
@@ -11,22 +12,10 @@ else
     exit
 fi
 
-if [ $# -eq 1 ]; then
-    memo=$1
-    configfile="config.sh"
-elif [ $# -eq 2 ]; then
-    memo=$1
-    configfile=$2
-else
-    usage_exit 
-fi
+check_root_user
+check_argument
+check_exist_config_file
 
-if [ -e "${configfile}" ]; then
-    source "${configfile}"
-else
-    echo "${configfile} does not exist."
-    exit
-fi
 
 kernel=$(uname -r)
 mptcp_ver=$(get_mptcp_version)

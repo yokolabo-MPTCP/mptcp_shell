@@ -10,6 +10,35 @@ function usage_exit() {
 
 }
 
+function check_argument {
+	if [ $# -eq 1 ]; then
+			memo=$1
+			configfile="config.sh"
+	elif [ $# -eq 2 ]; then
+			memo=$1
+			configfile=$2
+	else
+			usage_exit 
+	fi
+}
+
+function check_exist_config_file {
+	if [ -e "${configfile}" ]; then
+		source "${configfile}"
+	else
+		echo "${configfile} does not exist."
+		exit
+	fi
+}
+
+function check_root_user {
+	if [ $(whoami) != "root" ]; then
+		echo "Permission denied"
+		echo "Please run as root user"
+		exit	
+	fi	
+}
+
 function get_mptcp_version () {
 
     local kernel=$(uname -r)
@@ -907,14 +936,14 @@ function change_graph_xrange {
             exit
         fi
 
-        #expr ${start_point} + ${end_point} > /dev/null 2>&1 # numeric check
-        #if [ $? -ne 2 ] ; then
-            #echo "check... ok."
-            #break
-        #else
-            #echo "incorrect input. Please retype [x1 x2]"
-            #echo -n ">"
-        #fi
+        expr ${start_point} + ${end_point} > /dev/null 2>&1 # numeric check
+        if [ $? -ne 2 ] ; then
+            echo "check... ok."
+            break
+        else
+            echo "incorrect input. Please retype [x1 x2]"
+            echo -n ">"
+        fi
     done
 
     scale=`echo "scale=5; (${end_point} - ${start_point}) / 5.0" | bc`
