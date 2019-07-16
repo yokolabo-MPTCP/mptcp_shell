@@ -171,9 +171,9 @@ function run_iperf {
     do
 		delay=`echo "scale=5; $duration + ($app - $app_i) * $app_delay " | bc`
 		if [ $app_i = $app ]; then  # When final app launch
-			iperf -c ${receiver_ip} -t $delay -i $interval > ./${nowdir}/${repeat_i}th/throughput/app${app_i}.dat
+			iperf -c ${receiver_ip} -t $delay -i $interval -yc > ./${nowdir}/${repeat_i}th/throughput/app${app_i}.dat
 		else
-			iperf -c ${receiver_ip} -t $delay -i $interval > ./${nowdir}/${repeat_i}th/throughput/app${app_i}.dat &
+			iperf -c ${receiver_ip} -t $delay -i $interval -yc > ./${nowdir}/${repeat_i}th/throughput/app${app_i}.dat &
 			sleep $app_delay
 		fi
 	done
@@ -505,41 +505,14 @@ function calc_throughput_ave {
     do
         for repeat_i in `seq ${repeat}` 
         do
-            awk 'END{
-                if(NF==9){
-              if($9 ~ "Kbits/sec"){	
-                printf("%s Mbits/sec\n",$8/1000);
-              }else{
-                printf("%s %s\n",$8,$9);		
-              }
-                    
-                }else{
-              if($8 ~ "Kbits/sec"){	
-                printf("%s Mbits/sec\n",$7/1000);
-              }else{
-                printf("%s %s\n",$7,$8);		
-              }
-                }
-                
+            awk -F "," 'END{
+               printf("%s\n",$9 / 1000000); 
+            }' ./${targetdir}/${repeat_i}th/throughput/app${app_i}.dat >> ./${targetdir}/${repeat_i}th/throughput/app${app_i}_.dat
+
+            awk -F "," 'END{
+               printf("%s\n",$9 / 1000000); 
             }' ./${targetdir}/${repeat_i}th/throughput/app${app_i}.dat >> ./${targetdir}/ave/throughput/app${app_i}.dat
 
-            awk 'END{
-                if(NF==9){
-              if($9 ~ "Kbits/sec"){	
-                printf("%s\n",$8/1000);
-              }else{
-                printf("%s\n",$8);		
-              }
-                    
-                }else{
-                    if($8 ~ "Kbits/sec"){	
-                printf("%s\n",$7/1000);
-              }else{
-                printf("%s\n",$7);		
-              }
-                }
-            }' ./${targetdir}/${repeat_i}th/throughput/app${app_i}.dat >> ./${targetdir}/${repeat_i}th/throughput/app${app_i}_.dat
-                
         done
 
         awk -v repeat=${repeat} 'BEGIN{
