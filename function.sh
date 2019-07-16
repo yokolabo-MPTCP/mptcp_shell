@@ -3,23 +3,22 @@
 function usage_exit() {
 
     echo "Usage: $0 \"[memo of this exp.]\""
-    echo "If you want to other configulation file (default: config.sh),"
-    echo "then you can do as follow."
-    echo "Usage: $0 [memo of this exp.] [name of config.sh]"
+    echo "Usage: $0 [memo of this exp.] [name of configfile(default:default.conf)]"
     exit
 
 }
 
 function check_argument {
-	if [ $# -eq 1 ]; then
-			memo=$1
-			configfile="config.sh"
-	elif [ $# -eq 2 ]; then
-			memo=$1
-			configfile=$2
-	else
-			usage_exit 
-	fi
+    local args=$#
+    if [ $args -eq 1 ]; then
+        memo=$1
+        configfile="default.conf"
+        elif [ $args -eq 2 ]; then
+        memo=$1
+        configfile=$2
+    else
+        usage_exit 
+    fi
 }
 
 function check_exist_config_file {
@@ -136,8 +135,8 @@ function set_default_kernel_parameter {
     
 function set_netem_rtt_and_loss {
     
-    ssh root@${D1_ip} "./tc.sh 0 `expr ${rtt1_var} / 2` 0 && ./tc.sh 1 `expr ${rtt1_var} / 2` ${loss_var}" > /dev/null
-    ssh root@${D2_ip} "./tc.sh 0 `expr ${rtt2_var} / 2` 0 && ./tc.sh 1 `expr ${rtt2_var} / 2` ${loss_var}" > /dev/null
+    ssh -n root@${D1_ip} "./tc.sh 0 `expr ${rtt1_var} / 2` 0 > /dev/null && ./tc.sh 1 `expr ${rtt1_var} / 2` ${loss_var} > /dev/null"
+    ssh -n root@${D2_ip} "./tc.sh 0 `expr ${rtt2_var} / 2` 0 > /dev/null && ./tc.sh 1 `expr ${rtt2_var} / 2` ${loss_var} > /dev/null"
     
 }
 
@@ -161,6 +160,7 @@ function set_qdisc {
 function set_bandwidth {
     ethtool -s ${eth0} speed ${band1} duplex full
     ethtool -s ${eth1} speed ${band2} duplex full
+    sleep 5
 }
 
 function run_iperf {

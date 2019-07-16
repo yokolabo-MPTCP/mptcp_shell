@@ -11,29 +11,26 @@ else
     echo "function.sh does not exist."
     exit
 fi
-
+check_argument $@
 check_root_user
-check_argument
 check_exist_config_file
-
 
 kernel=$(uname -r)
 mptcp_ver=$(get_mptcp_version)
 configure_ip_address $mptcp_ver
-check_network_available
+#check_network_available
 
 rcvkernel=$(ssh root@${receiver_ip} 'uname -r')
 
 today=$(date "+%Y%m%d_%H-%M-%S")
 nowdir=$today
 mkdir ${today}
-cp -f ${configfile} ${today}/config.sh
+cp -f ${configfile} ${today}/default.conf
 cd ${today}
 mkdir -p tex/img
 
 #ip link set dev ${eth0} multipath on
 #ip link set dev ${eth1} multipath on
-
 set_bandwidth
 set_qdisc
 set_default_kernel_parameter
@@ -58,7 +55,6 @@ do
 				fi	
                 for queue_var in "${queue[@]}"
 				do
-					
                     set_txqueuelen
 					nowdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
 					mkdir ${nowdir}
@@ -82,7 +78,7 @@ do
 	done
 done
 
-process_log_data
+time process_log_data
 join_header_and_tex_file
 build_tex_to_pdf
 

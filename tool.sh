@@ -17,12 +17,12 @@ if [ $# = 0 ]; then
     echo -e $message
     exit
 elif [ $# = 1 ]; then
-    if [ ! -e "$1/config.sh" ]; then
-        echo -e "\n not found config.sh"
+    if [ ! -e "$1/default.conf" ]; then
+        echo -e "\n not found default.conf"
         echo -e $message
         exit
     else
-        source $1/config.sh
+        source $1/default.conf
         
         today=$1
         cd $today
