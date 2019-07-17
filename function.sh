@@ -834,6 +834,36 @@ function create_throughput_queue_tex {
     cd ..
 }
 
+function create_all_each_graph_tex {
+    local targetname=$1
+    local img_name=${targetname}_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png
+
+    echo "\begin{figurehere}" >> ${tex_name}
+    echo "\begin{center}" >> ${tex_name}
+    echo '\includegraphics[width=90mm]' >> ${tex_name}
+    echo "{img/${img_name}}" >> ${tex_name} 
+    echo "\caption{${targetname}}" >> ${tex_name} 
+    echo "\end{center}" >>${tex_name}
+    echo "\end{figurehere}" >>${tex_name} 
+
+}
+
+function create_all_graph_tex {
+    local tex_name=tex/${cgn_ctrl_var}_alldata_${today}.tex
+
+    echo "${cgn_ctrl_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms LOSS=${loss_var} queue=${queue_var}pkt ${repeat_i}th" >> ${tex_name} 
+    echo "\begin{multicols}{2}" >> ${tex_name}
+
+    create_all_each_graph_tex "throughput"
+
+    for var in "${item_to_create_graph[@]}" 
+    do
+        create_all_each_graph_tex $var
+    done
+    echo "\end{multicols}" >> ${tex_name}
+    echo "\clearpage" >>${tex_name} 
+}
+
 function process_log_data {
     local cgn_ctrl_var  
     local rtt1_var  
@@ -844,7 +874,6 @@ function process_log_data {
     local app_meta=()
     local total_count=`echo "scale=1; ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} * $repeat " | bc`
     local current_count=0
-
 
     for cgn_ctrl_var in "${cgn_ctrl[@]}" 
     do
@@ -873,6 +902,7 @@ function process_log_data {
                             process_throughput_data
                             create_throughput_time_graph
                             create_throughput_time_tex
+                            create_all_graph_tex
                             (( current_count++))
                         done
                         process_throughput_data_ave
@@ -917,6 +947,11 @@ function build_tex_to_pdf {
         dvipdfmx ${cgn_ctrl_var}_throughput_time_${today}.dvi > /dev/null 2>&1
         ln -sf tex/${cgn_ctrl_var}_throughput_time_${today}.pdf ../
 
+        platex -halt-on-error ${cgn_ctrl_var}_alldata_${today}.tex > /dev/null 2>&1
+        dvipdfmx ${cgn_ctrl_var}_alldata_${today}.dvi > /dev/null 2>&1
+        ln -sf tex/${cgn_ctrl_var}_alldata_${today}.pdf ../
+
+
         rm -f ${cgn_ctrl_var}*.log
         rm -f ${cgn_ctrl_var}*.dvi
         rm -f ${cgn_ctrl_var}*.aux
@@ -937,6 +972,12 @@ function create_tex_header {
     \usepackage[dvipdfmx]{graphicx}
     \usepackage{grffile}
     \usepackage[top=0truemm,bottom=0truemm,left=0truemm,right=0truemm]{geometry}
+    \usepackage{multicol}
+    \makeatletter
+    \newenvironment{figurehere}
+        {\def\@captype{figure}}
+        {}
+    \makeatother
     \begin{document}
     ' > tex_header.txt
    
@@ -1009,6 +1050,16 @@ function join_header_and_tex_file {
     do
         create_tex_header "Throughput"
         tex_file_name=${cgn_ctrl_var}_throughput_time_${today}
+        cat ./tex_header.txt ./${tex_file_name}.tex > tmp.tex
+        mv tmp.tex ./${tex_file_name}.tex 
+        rm ./tex_header.txt
+        echo "\end{document}" >> ${tex_file_name}.tex
+    done
+
+    for cgn_ctrl_var in "${cgn_ctrl[@]}" 
+    do
+        create_tex_header "Alldata"
+        tex_file_name=${cgn_ctrl_var}_alldata_${today}
         cat ./tex_header.txt ./${tex_file_name}.tex > tmp.tex
         mv tmp.tex ./${tex_file_name}.tex 
         rm ./tex_header.txt
