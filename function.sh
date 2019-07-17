@@ -117,6 +117,59 @@ function check_network_available {
     echo " ok."
 }
 
+function make_directory {
+    local cgn_ctrl_var  
+    local rtt1_var  
+    local rtt2_var  
+    local queue_var  
+    local repeat_i 
+    local targetdir
+
+    echo -n "make directory ..."
+    mkdir ${today}
+    mkdir ${today}/tex
+    mkdir ${today}/tex/img
+
+    for cgn_ctrl_var in "${cgn_ctrl[@]}" 
+    do
+        for rtt1_var in "${rtt1[@]}"
+        do
+            for rtt2_var in "${rtt2[@]}"
+            do
+                if [ ${rtt1_var} != ${rtt2_var} ] ; then
+                    continue
+                fi
+                for loss_var in "${loss[@]}"
+                do
+                    targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
+                    mkdir ${today}/${targetdir}
+                    mkdir ${today}/${targetdir}/ave
+                    for repeat_i in `seq ${repeat}` 
+                    do
+                        mkdir ${today}/${targetdir}/${repeat_i}th
+                    done
+
+                    for queue_var in "${queue[@]}"
+                    do
+                        targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
+                        mkdir ${today}/${targetdir}
+                        mkdir ${today}/${targetdir}/ave
+                        mkdir ${today}/${targetdir}/ave/throughput
+                        for repeat_i in `seq ${repeat}` 
+                        do
+                            mkdir ${today}/${targetdir}/${repeat_i}th
+                            mkdir ${today}/${targetdir}/${repeat_i}th/log
+                            mkdir ${today}/${targetdir}/${repeat_i}th/throughput
+
+                        done
+                    done    
+                done
+            done
+        done
+    done
+    echo "done"
+}
+
 function set_default_kernel_parameter {
     sysctl net.mptcp.mptcp_debug=${mptcp_debug}
     sysctl net.mptcp.mptcp_enabled=${mptcp_enabled}
@@ -166,7 +219,7 @@ function set_bandwidth {
 function run_iperf {
     local app_i 
     local delay
-    local interval=1
+    local nowdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
     for app_i in `seq ${app}` 
     do
 		delay=`echo "scale=5; $duration + ($app - $app_i) * $app_delay " | bc`
@@ -180,7 +233,8 @@ function run_iperf {
 }
 
 function format_and_copy_log {
-    
+     
+    local nowdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
     awk '{
         if(NR==1){
             if(NF==0){
@@ -494,27 +548,103 @@ function create_tex_file {
 
 }
 
-function calc_throughput_ave {
-    targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
+function create_throughput_time_graph_plt {
     local app_i
-    local repeat_i
-    mkdir ${targetdir}/ave
-    mkdir ${targetdir}/ave/throughput
+    local yrangemax=$(( band1 + band2 ))
+    local targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
+    local pltfile=${targetdir}/${repeat_i}th/throughput/plot.plt
+    
+    echo 'set terminal emf enhanced "Arial, 24"
+    set terminal png size 960,720
+    set xlabel "time[s]"
+    set ylabel "throughput"
+    set key outside
+    set size ratio 0.5
+    set boxwidth 0.5 relative 
+    set datafile separator " " ' > ${pltfile}
+    echo "set title \"throughput ${targetdir} ${repeat_i}th\"" >> ${pltfile}
+    echo "set yrange [0:${yrangemax}]" >> ${pltfile}
+    echo "set output \"throughput_${targetdir}_${repeat_i}th.png\"" >> ${pltfile}
+
+    echo -n "plot " >> ${pltfile}
 
     for app_i in `seq ${app}` 
     do
-        for repeat_i in `seq ${repeat}` 
-        do
-            awk -F "," 'END{
-               printf("%s\n",$9 / 1000000); 
-            }' ./${targetdir}/${repeat_i}th/throughput/app${app_i}.dat >> ./${targetdir}/${repeat_i}th/throughput/app${app_i}_.dat
+        echo -n "\"./app${app_i}_graph.dat\" using 1:2 with lines linewidth 2 title \"APP${app_i}\"" >> ${pltfile}
+        if [ $app_i != $app ]; then
+           echo -n " , " >> ${pltfile}
+        fi
+    done
+}
 
-            awk -F "," 'END{
-               printf("%s\n",$9 / 1000000); 
-            }' ./${targetdir}/${repeat_i}th/throughput/app${app_i}.dat >> ./${targetdir}/ave/throughput/app${app_i}.dat
+function create_throughput_time_tex {
+    local targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
+    local tex_name=tex/${cgn_ctrl_var}_throughput_time_${today}.tex
+    local img_name=throughput_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png
 
-        done
+    echo "\begin{figure}[htbp]" >> ${tex_name}
+    echo "\begin{center}" >> ${tex_name}
+    echo '\includegraphics[width=95mm]' >> ${tex_name}
+    echo "{img/${img_name}}" >> ${tex_name} 
+    echo "\caption{throguhput ${cgn_ctrl_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms LOSS=${loss_var}\% queue=${queue_var}pkt ${repeat_i}回目}" >> ${tex_name} 
+    echo '\end{center}
+    \end{figure}' >>${tex_name} 
 
+}
+
+function create_throughput_time_graph {
+    local targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
+    local img_file
+
+    create_throughput_time_graph_plt
+
+    cd ${targetdir}/${repeat_i}th/throughput
+    gnuplot plot.plt
+    img_file=throughput_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png
+    ln -s  ../../${targetdir}/${repeat_i}th/throughput/${img_file} ../../../tex/img/
+    cd ../../../
+
+}
+
+function process_throughput_data_interval {
+    local time_adjust=`echo "scale=3; (${app_i} - 1) * ${app_delay} " | bc`
+    awk -F "," -v adjust=$time_adjust '{
+       if (NR==1){
+           f_time=$1
+       }
+       printf ("%f %s\n",$1 - f_time + adjust,$9 / 1000000);
+
+    }' ./${targetdir}/${repeat_i}th/throughput/app${app_i}.dat > ./${targetdir}/${repeat_i}th/throughput/app${app_i}_graph_tmp.dat
+
+    # データの最終行を除外する
+    sed '$d' ./${targetdir}/${repeat_i}th/throughput/app${app_i}_graph_tmp.dat > ./${targetdir}/${repeat_i}th/throughput/app${app_i}_graph.dat
+}
+
+function process_throughput_data {
+    targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
+    local app_i
+
+    for app_i in `seq ${app}` 
+    do
+        awk -F "," 'END{
+           printf("%s\n",$9 / 1000000); 
+        }' ./${targetdir}/${repeat_i}th/throughput/app${app_i}.dat >> ./${targetdir}/${repeat_i}th/throughput/app${app_i}_.dat
+
+        awk -F "," 'END{
+           printf("%s\n",$9 / 1000000); 
+        }' ./${targetdir}/${repeat_i}th/throughput/app${app_i}.dat >> ./${targetdir}/ave/throughput/app${app_i}.dat
+       
+        process_throughput_data_interval
+    done
+}
+
+function process_throughput_data_ave {
+    targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
+    local app_i
+    local repeat_i
+
+    for app_i in `seq ${app}` 
+    do
         awk -v repeat=${repeat} 'BEGIN{
                 total=0
             }{
@@ -526,19 +656,15 @@ function calc_throughput_ave {
     done
 }
 
-function create_throughput_graph_plt {
+
+function create_throughput_queue_graph_plt {
     local repeat_i 
     local app_i
     local queue_var
     local throughput
     local yrangemax=$(( band1 + band2 ))
     targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
-    mkdir ${targetdir}
-    for repeat_i in `seq ${repeat}` 
-    do
-        mkdir ${targetdir}/${repeat_i}th
-    done
-
+    
     for repeat_i in `seq ${repeat}` 
     do
         for queue_var in "${queue[@]}"
@@ -597,9 +723,6 @@ function create_throughput_graph_plt {
         done
     done 
 
-
-    mkdir ${targetdir}/ave
-
     for queue_var in "${queue[@]}"
     do
         for app_i in `seq ${app}` 
@@ -657,10 +780,10 @@ function create_throughput_graph_plt {
     done
 }
 
-function create_throughput_graph {
+function create_throughput_queue_graph {
     local targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
     local img_file
-    create_throughput_graph_plt
+    create_throughput_queue_graph_plt
 
     for repeat_i in `seq ${repeat}` 
     do
@@ -679,7 +802,7 @@ function create_throughput_graph {
     cd ../..
 }
 
-function create_throughput_tex {
+function create_throughput_queue_tex {
     targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
     local repeat_i
     local tex_file_name=${cgn_ctrl_var}_throughput_${today}
@@ -747,12 +870,15 @@ function process_log_data {
                             count_mptcp_state
                             create_graph_img
                             create_tex_file
+                            process_throughput_data
+                            create_throughput_time_graph
+                            create_throughput_time_tex
                             (( current_count++))
                         done
-                        calc_throughput_ave
+                        process_throughput_data_ave
                     done    
-                    create_throughput_graph
-                    create_throughput_tex
+                    create_throughput_queue_graph
+                    create_throughput_queue_tex
                 done
             done
         done
@@ -786,7 +912,11 @@ function build_tex_to_pdf {
         platex -halt-on-error ${cgn_ctrl_var}_throughput_${today}_ave.tex > /dev/null 2>&1
         dvipdfmx ${cgn_ctrl_var}_throughput_${today}_ave.dvi > /dev/null 2>&1
         ln -sf tex/${cgn_ctrl_var}_throughput_${today}_ave.pdf ../
-        
+
+        platex -halt-on-error ${cgn_ctrl_var}_throughput_time_${today}.tex > /dev/null 2>&1
+        dvipdfmx ${cgn_ctrl_var}_throughput_time_${today}.dvi > /dev/null 2>&1
+        ln -sf tex/${cgn_ctrl_var}_throughput_time_${today}.pdf ../
+
         rm -f ${cgn_ctrl_var}*.log
         rm -f ${cgn_ctrl_var}*.dvi
         rm -f ${cgn_ctrl_var}*.aux
@@ -875,6 +1005,16 @@ function join_header_and_tex_file {
         echo "\end{document}" >> ${tex_file_name}_ave.tex
         rm ./tex_header.txt
     done
+    for cgn_ctrl_var in "${cgn_ctrl[@]}" 
+    do
+        create_tex_header "Throughput"
+        tex_file_name=${cgn_ctrl_var}_throughput_time_${today}
+        cat ./tex_header.txt ./${tex_file_name}.tex > tmp.tex
+        mv tmp.tex ./${tex_file_name}.tex 
+        rm ./tex_header.txt
+        echo "\end{document}" >> ${tex_file_name}.tex
+    done
+
     cd ..
 }
 

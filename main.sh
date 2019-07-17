@@ -23,11 +23,10 @@ configure_ip_address $mptcp_ver
 rcvkernel=$(ssh root@${receiver_ip} 'uname -r')
 
 today=$(date "+%Y%m%d_%H-%M-%S")
-nowdir=$today
-mkdir ${today}
+make_directory
 cp -f ${configfile} ${today}/default.conf
+
 cd ${today}
-mkdir -p tex/img
 
 #ip link set dev ${eth0} multipath on
 #ip link set dev ${eth1} multipath on
@@ -56,15 +55,9 @@ do
                 for queue_var in "${queue[@]}"
 				do
                     set_txqueuelen
-					nowdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
-					mkdir ${nowdir}
-						
                     for repeat_i in `seq ${repeat}` 
 					do
-						mkdir ${nowdir}/${repeat_i}th
-						mkdir ${nowdir}/${repeat_i}th/log
-						mkdir ${nowdir}/${repeat_i}th/throughput
-
+					
 						echo -n "${cgn_ctrl_var}_RTT1=${rtt1_var}ms, RTT2=${rtt2_var}ms, LOSS=${loss_var}, queue=${queue_var}pkt, ${repeat_i}回目 ..."
 
                         clean_log_sender_and_receiver
