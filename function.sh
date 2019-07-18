@@ -633,24 +633,23 @@ function convert_unix_time {
 
 function process_throughput_data_interval {
     local time_adjust=`echo "scale=3; (${app_i} - 1) * ${app_delay} " | bc`
-    
+    echo "app${app_i} time_adjust=${time_adjust}" 
     while read line
     do
         local times=$(echo "$line" | cut -f 1 -d ",")
         local throughput=$(echo "$line" | cut -f 9 -d ",")
         local unix_time=$(convert_unix_time ${times})
-        unix_time=`echo "scale=6; ${unix_time} + ${time_adjust} " | bc`
         throughput=`echo "scale=3; ${throughput} / 1000000" | bc ` 
         
         echo "${unix_time} ${throughput}" >> ./${targetdir}/${repeat_i}th/throughput/app${app_i}_tmp.dat 
     done < ./${targetdir}/${repeat_i}th/throughput/app${app_i}.dat 
     
     # 経過時間の計算
-    awk '{
+    awk -v delay=${time_adjust} '{
        if (NR==1){
            f_time=$1
        }
-       printf ("%f %s\n",$1 - f_time,$2);
+       printf ("%f %s\n",$1 - f_time + delay,$2);
 
     }' ./${targetdir}/${repeat_i}th/throughput/app${app_i}_tmp.dat > ./${targetdir}/${repeat_i}th/throughput/app${app_i}_graph_tmp.dat
 
