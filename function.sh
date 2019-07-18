@@ -187,9 +187,18 @@ function set_default_kernel_parameter {
 }
     
 function set_netem_rtt_and_loss {
-    
-    ssh -n root@${D1_ip} "./tc.sh 0 `expr ${rtt1_var} / 2` 0 > /dev/null && ./tc.sh 1 `expr ${rtt1_var} / 2` ${loss_var} > /dev/null"
-    ssh -n root@${D2_ip} "./tc.sh 0 `expr ${rtt2_var} / 2` 0 > /dev/null && ./tc.sh 1 `expr ${rtt2_var} / 2` ${loss_var} > /dev/null"
+    local D1_eth0=eth0
+    local D1_eth1=eth1
+    local D2_eth0=eth0    
+    local D2_eth1=eth1   
+
+    local delay_harf1=`echo "scale=3; $rtt1_var / 2 " | bc`
+    local delay_harf2=`echo "scale=3; $rtt2_var / 2 " | bc`
+
+    ssh -n root@${D1_ip} "tc qdisc change dev ${D1_eth0} root netem delay ${delay_harf1}ms loss 0% &&
+                         tc qdisc change dev ${D1_eth1} root netem delay ${delay_harf1}ms loss ${loss_var}% && tc qdisc show" 
+    ssh -n root@${D2_ip} "tc qdisc change dev ${D2_eth0} root netem delay ${delay_harf2}ms loss 0% &&
+                         tc qdisc change dev ${D2_eth1} root netem delay ${delay_harf2}ms loss ${loss_var}%"
     
 }
 
