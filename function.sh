@@ -903,7 +903,7 @@ function create_all_each_graph_tex {
 function create_all_graph_tex {
     local tex_name=tex/${cgn_ctrl_var}_alldata_${today}.tex
 
-    echo "${cgn_ctrl_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms LOSS=${loss_var} queue=${queue_var}pkt ${repeat_i}th" >> ${tex_name} 
+    echo "\begin{center}${cgn_ctrl_var} LOSS=${loss_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms queue=${queue_var}pkt ${repeat_i}th \end{center}" >> ${tex_name} 
     echo "\begin{multicols}{2}" >> ${tex_name}
 
     create_all_each_graph_tex "throughput"
@@ -929,15 +929,15 @@ function process_log_data {
 
     for cgn_ctrl_var in "${cgn_ctrl[@]}" 
     do
-        for rtt1_var in "${rtt1[@]}"
+        for loss_var in "${loss[@]}"
         do
-            for rtt2_var in "${rtt2[@]}"
+            for rtt1_var in "${rtt1[@]}"
             do
-                if [ ${rtt1_var} != ${rtt2_var} ] ; then
-                    continue
-                fi
-                for loss_var in "${loss[@]}"
+                for rtt2_var in "${rtt2[@]}"
                 do
+                    if [ ${rtt1_var} != ${rtt2_var} ] ; then
+                        continue
+                    fi
                     for queue_var in "${queue[@]}"
                     do
                         for repeat_i in `seq ${repeat}` 
@@ -1023,7 +1023,7 @@ function create_tex_header {
     \documentclass{jsarticle}
     \usepackage[dvipdfmx]{graphicx}
     \usepackage{grffile}
-    \usepackage[top=0truemm,bottom=0truemm,left=0truemm,right=0truemm]{geometry}
+    \usepackage[top=0truemm,bottom=0truemm,left=5truemm,right=0truemm]{geometry}
     \usepackage{multicol}
     \makeatletter
     \newenvironment{figurehere}
@@ -1060,7 +1060,8 @@ function create_tex_header {
 	echo "\end{table}" >> ./tex_header.txt
 	echo "\clearpage" >> ./tex_header.txt
 
-
+    echo "\begin{verbatim} `cat ../default.conf` \end{verbatim}" >> ./tex_header.txt
+	echo "\clearpage" >> ./tex_header.txt
 
 }
 

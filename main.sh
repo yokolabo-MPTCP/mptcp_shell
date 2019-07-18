@@ -40,15 +40,16 @@ echo_finish_time
 for cgn_ctrl_var in "${cgn_ctrl[@]}" 
 do
 	sysctl net.ipv4.tcp_congestion_control=${cgn_ctrl_var}
-    for rtt1_var in "${rtt1[@]}"
-	do
-        for rtt2_var in "${rtt2[@]}"
-		do
-            for loss_var in "${loss[@]}"
-			do
+    for loss_var in "${loss[@]}"
+    do
+        for rtt1_var in "${rtt1[@]}"
+        do
+            for rtt2_var in "${rtt2[@]}"
+            do
+                
                 set_netem_rtt_and_loss
 				if [ $rtt1_var != $rtt2_var ]; then
-					break
+					continue
 					
 				fi	
                 for queue_var in "${queue[@]}"
@@ -57,7 +58,7 @@ do
                     for repeat_i in `seq ${repeat}` 
 					do
 					
-						echo -n "${cgn_ctrl_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms LOSS=${loss_var} queue=${queue_var}pkt ${repeat_i}回目 ..."
+						echo -n "${cgn_ctrl_var} LOSS=${loss_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms queue=${queue_var}pkt ${repeat_i}回目 ..."
 
                         clean_log_sender_and_receiver
                         run_iperf
@@ -70,7 +71,7 @@ do
 	done
 done
 
-time process_log_data
+process_log_data
 join_header_and_tex_file
 build_tex_to_pdf
 
