@@ -125,7 +125,7 @@ function make_directory {
     local repeat_i 
     local targetdir
 
-    echo -n "make directory ..."
+    echo -n "making directory ..."
     mkdir ${today}
     mkdir ${today}/tex
     mkdir ${today}/tex/img
@@ -185,6 +185,17 @@ function set_default_kernel_parameter {
 
     
 }
+
+function echo_finish_time {
+    local process_time=180 
+    local timestamp
+    local time
+     
+    time=`echo "scale=5; ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} * ($duration+${process_time}) * $repeat " | bc`
+    ((sec=time%60, min=(time%3600)/60, hrs=time/3600))
+    timestamp=$(printf "%d時間%02d分%02d秒" $hrs $min $sec)
+    echo "終了予想時刻 `date --date "$time seconds"` ${timestamp} "
+}
     
 function set_netem_rtt_and_loss {
     local D1_eth0=eth0
@@ -220,9 +231,11 @@ function set_qdisc {
 }
 
 function set_bandwidth {
+    echo -n "setting bandwidth ..." 
     ethtool -s ${eth0} speed ${band1} duplex full
     ethtool -s ${eth1} speed ${band2} duplex full
     sleep 5
+    echo "done" 
 }
 
 function run_iperf {
@@ -633,7 +646,6 @@ function convert_unix_time {
 
 function process_throughput_data_interval {
     local time_adjust=`echo "scale=3; (${app_i} - 1) * ${app_delay} " | bc`
-    echo "app${app_i} time_adjust=${time_adjust}" 
     while read line
     do
         local times=$(echo "$line" | cut -f 1 -d ",")

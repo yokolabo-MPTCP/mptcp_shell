@@ -34,8 +34,7 @@ set_qdisc
 set_default_kernel_parameter
 set_user_kernel_parameter
 
-time=`echo "scale=5; ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} * ($duration+60) * $repeat " | bc`
-echo "終了予想時刻 `date --date "$time seconds"`"
+echo_finish_time
 
 for cgn_ctrl_var in "${cgn_ctrl[@]}" 
 do
@@ -57,7 +56,7 @@ do
                     for repeat_i in `seq ${repeat}` 
 					do
 					
-						echo -n "${cgn_ctrl_var}_RTT1=${rtt1_var}ms, RTT2=${rtt2_var}ms, LOSS=${loss_var}, queue=${queue_var}pkt, ${repeat_i}回目 ..."
+						echo -n "${cgn_ctrl_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms LOSS=${loss_var} queue=${queue_var}pkt ${repeat_i}回目 ..."
 
                         clean_log_sender_and_receiver
                         run_iperf
