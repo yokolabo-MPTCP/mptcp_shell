@@ -24,12 +24,11 @@ rcvkernel=$(ssh root@${receiver_ip} 'uname -r')
 
 today=$(date "+%Y%m%d_%H-%M-%S")
 make_directory
+
 cp -f ${configfile} ${today}/default.conf
 
 cd ${today}
 
-#ip link set dev ${eth0} multipath on
-#ip link set dev ${eth1} multipath on
 set_bandwidth
 set_qdisc
 set_default_kernel_parameter
