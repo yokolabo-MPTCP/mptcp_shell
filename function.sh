@@ -606,18 +606,50 @@ function create_throughput_time_graph {
 
 }
 
+function convert_unix_time {
+    # dateformat is "YYMMDDhhmmss"
+    local times=$1
+
+    local year=$(echo "$times" | cut -c 1-4)
+    local month=$(echo "$times" | cut -c 5-6)
+    local day=$(echo "$times" | cut -c 7-8)
+    local hour=$(echo "$times" | cut -c 9-10)
+    local minute=$(echo "$times" | cut -c 11-12)
+    local second=$(echo "$times" | cut -c 13-)
+
+    times=$(echo "${year}-${month}-${day} ${hour}:${minute}:${second}")
+    times=$(date -d "${times}" +%s.%6N) 
+    echo "${times}"
+}
+
 function process_throughput_data_interval {
     local time_adjust=`echo "scale=3; (${app_i} - 1) * ${app_delay} " | bc`
-    awk -F "," -v adjust=$time_adjust '{
+    
+    while read line
+    do
+        local times=$(echo "$line" | cut -f 1 -d ",")
+        local throughput=$(echo "$line" | cut -f 9 -d ",")
+        local unix_time=$(convert_unix_time ${times})
+        unix_time=`echo "scale=6; ${unix_time} + ${time_adjust} " | bc`
+        throughput=`echo "scale=3; ${throughput} / 1000000" | bc ` 
+        
+        echo "${unix_time} ${throughput}" >> ./${targetdir}/${repeat_i}th/throughput/app${app_i}_tmp.dat 
+    done < ./${targetdir}/${repeat_i}th/throughput/app${app_i}.dat 
+    
+    # 経過時間の計算
+    awk '{
        if (NR==1){
            f_time=$1
        }
-       printf ("%f %s\n",$1 - f_time + adjust,$9 / 1000000);
+       printf ("%f %s\n",$1 - f_time,$2);
 
-    }' ./${targetdir}/${repeat_i}th/throughput/app${app_i}.dat > ./${targetdir}/${repeat_i}th/throughput/app${app_i}_graph_tmp.dat
+    }' ./${targetdir}/${repeat_i}th/throughput/app${app_i}_tmp.dat > ./${targetdir}/${repeat_i}th/throughput/app${app_i}_graph_tmp.dat
 
     # データの最終行を除外する
     sed '$d' ./${targetdir}/${repeat_i}th/throughput/app${app_i}_graph_tmp.dat > ./${targetdir}/${repeat_i}th/throughput/app${app_i}_graph.dat
+
+    rm -f ./${targetdir}/${repeat_i}th/throughput/app${app_i}_tmp.dat 
+    rm -f ./${targetdir}/${repeat_i}th/throughput/app${app_i}_graph_tmp.dat 
 }
 
 function process_throughput_data {
