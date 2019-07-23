@@ -61,38 +61,6 @@ function get_mptcp_version () {
 
 }
 
-function configure_ip_address(){
-    local mptcp_ver=$1
-
-    if [ $mptcp_ver = "0.92" ]; then
-        receiver_ip=192.168.15.2
-        D1_ip=192.168.3.2
-        D2_ip=192.168.4.2
-        eth0=enp0s31f6
-        eth1=enp2s0
-     elif [ $mptcp_ver = "0.86" ]; then
-        receiver_ip=192.168.13.1
-        D1_ip=192.168.3.2
-        D2_ip=192.168.4.2
-        eth0=eth0
-        eth1=eth1
-     elif [ $mptcp_ver = "vbox" ]; then
-        receiver_ip=192.168.11.1
-        D1_ip=192.168.1.2
-        D2_ip=192.168.2.2
-        eth0=enp0s3
-        eth1=enp0s8
-    else
-        receiver_ip=192.168.13.1
-        D1_ip=192.168.3.2
-        D2_ip=192.168.4.2
-        eth0=eth0
-        eth1=eth1
-    fi
-    
-
-}
-
 function check_network_available {
    echo -n "checking network is available ..."
    ping $receiver_ip -c 1 >> /dev/null
