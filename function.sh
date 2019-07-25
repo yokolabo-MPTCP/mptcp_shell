@@ -174,14 +174,21 @@ function set_default_kernel_parameter {
 }
 
 function echo_finish_time {
-    local process_time=180 
+    local process_time=135 # 一回の実験に必要なデータ処理時間 
     local timestamp
     local time
      
     time=`echo "scale=5; ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} * ($duration+${process_time}) * $repeat " | bc`
     ((sec=time%60, min=(time%3600)/60, hrs=time/3600))
     timestamp=$(printf "%d時間%02d分%02d秒" $hrs $min $sec)
-    echo "終了予想時刻 `date --date "$time seconds"` ${timestamp} "
+    echo "予想終了時刻 `date --date "$time seconds"` ${timestamp} "
+}
+
+function echo_data_byte {
+    local byte
+    local one_data=3.8 # 一回の実験に必要なデータ量
+    byte=`echo "scale=5; ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} *${one_data} * $repeat " | bc`
+    echo "予想使用データ量 ${byte} GB"
 }
     
 function set_netem_rtt_and_loss {

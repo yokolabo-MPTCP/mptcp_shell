@@ -35,6 +35,7 @@ set_default_kernel_parameter
 set_user_kernel_parameter
 
 echo_finish_time
+echo_data_byte
 
 for cgn_ctrl_var in "${cgn_ctrl[@]}" 
 do
