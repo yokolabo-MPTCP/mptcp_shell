@@ -44,10 +44,24 @@ function get_mptcp_version () {
 
     if [[ $kernel == *3.5.7* ]]; then
         mptcp_ver=0.86
-    elif [[ $kernel == *4.4.88* ]]; then
+    elif [[ $kernel == *3.1.0* ]]; then
+        mptcp_ver=0.87
+    elif [[ $kernel == *3.1.1* ]]; then
+        mptcp_ver=0.88
+    elif [[ $kernel == *3.14.* ]]; then
+        mptcp_ver=0.89
+    elif [[ $kernel == *3.18.* ]]; then
+        mptcp_ver=0.90
+    elif [[ $kernel == *4.1.* ]]; then
+        mptcp_ver=0.91
+    elif [[ $kernel == *4.4.* ]]; then
         mptcp_ver=0.92
-    elif [[ $kernel == *4.4.110* ]]; then
-        mptcp_ver=0.92
+    elif [[ $kernel == *4.9.* ]]; then
+        mptcp_ver=0.93
+    elif [[ $kernel == *4.14.* ]]; then
+        mptcp_ver=0.94
+    elif [[ $kernel == *4.19.* ]]; then
+        mptcp_ver=0.95
     elif [[ $kernel == *vbox* ]]; then
         mptcp_ver=vbox
     else
