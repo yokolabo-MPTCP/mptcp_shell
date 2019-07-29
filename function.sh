@@ -108,9 +108,9 @@ function make_directory {
     local targetdir
 
     echo -n "making directory ..."
-    mkdir ${today}
-    mkdir ${today}/tex
-    mkdir ${today}/tex/img
+    mkdir ${rootdir}
+    mkdir ${rootdir}/tex
+    mkdir ${rootdir}/tex/img
 
     for cgn_ctrl_var in "${cgn_ctrl[@]}" 
     do
@@ -124,24 +124,24 @@ function make_directory {
                 for loss_var in "${loss[@]}"
                 do
                     targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
-                    mkdir ${today}/${targetdir}
-                    mkdir ${today}/${targetdir}/ave
+                    mkdir ${rootdir}/${targetdir}
+                    mkdir ${rootdir}/${targetdir}/ave
                     for repeat_i in `seq ${repeat}` 
                     do
-                        mkdir ${today}/${targetdir}/${repeat_i}th
+                        mkdir ${rootdir}/${targetdir}/${repeat_i}th
                     done
 
                     for queue_var in "${queue[@]}"
                     do
                         targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
-                        mkdir ${today}/${targetdir}
-                        mkdir ${today}/${targetdir}/ave
-                        mkdir ${today}/${targetdir}/ave/throughput
+                        mkdir ${rootdir}/${targetdir}
+                        mkdir ${rootdir}/${targetdir}/ave
+                        mkdir ${rootdir}/${targetdir}/ave/throughput
                         for repeat_i in `seq ${repeat}` 
                         do
-                            mkdir ${today}/${targetdir}/${repeat_i}th
-                            mkdir ${today}/${targetdir}/${repeat_i}th/log
-                            mkdir ${today}/${targetdir}/${repeat_i}th/throughput
+                            mkdir ${rootdir}/${targetdir}/${repeat_i}th
+                            mkdir ${rootdir}/${targetdir}/${repeat_i}th/log
+                            mkdir ${rootdir}/${targetdir}/${repeat_i}th/throughput
 
                         done
                     done    
@@ -157,11 +157,11 @@ function make_directory {
             for queue_var in "${queue[@]}"
             do
                 targetdir=${cgn_ctrl_var}_loss=${loss_var}_queue=${queue_var}
-                mkdir ${today}/${targetdir} 
-                mkdir ${today}/${targetdir}/ave
+                mkdir ${rootdir}/${targetdir} 
+                mkdir ${rootdir}/${targetdir}/ave
                 for repeat_i in `seq ${repeat}` 
                 do
-                    mkdir ${today}/${targetdir}/${repeat_i}th
+                    mkdir ${rootdir}/${targetdir}/${repeat_i}th
                 done
             done
         done

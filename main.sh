@@ -22,12 +22,13 @@ mptcp_ver=$(get_mptcp_version)
 rcvkernel=$(ssh root@${receiver_ip} 'uname -r')
 
 today=$(date "+%Y%m%d_%H-%M-%S")
+rootdir=${today}_${memo}
 
 make_directory
 
-cp -f ${configfile} ${today}/default.conf
+cp -f ${configfile} ${rootdir}/default.conf
 
-cd ${today}
+cd ${rootdir}
 
 set_bandwidth
 set_qdisc
