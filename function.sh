@@ -1202,7 +1202,7 @@ function process_log_data {
 function platex_dvipdfmx_link {
     local tex_file_name=$1
 
-    platex -halt-on-error ${tex_file_name}.tex > /dev/null 2>&1
+    platex -halt-on-error -interaction=nonstopmode ${tex_file_name}.tex > /dev/null 2>&1
     dvipdfmx ${tex_file_name}.dvi > /dev/null 2>&1
     ln -sf tex/${tex_file_name}.pdf ../
 
