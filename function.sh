@@ -1437,3 +1437,107 @@ function change_graph_xrange {
 
 
 }
+
+function change_graph_yrange {
+    local cgn_ctrl_var  
+    local rtt1_var  
+    local rtt2_var  
+    local queue_var  
+    local repeat_i 
+    local targetdir
+    
+    echo "Please selecet target name"
+    select targetname in "Throughput" "exit"
+    do
+        if [ $targetname = "Throughput" ];then
+            targetname=plot
+            break
+        elif [ "${targetname}" = "exit" ]; then
+            exit
+        fi
+    done
+
+    echo "Please input y range [y1 y2]"
+    echo "if you want to exit, please type [exit]"
+    echo -n ">"
+
+    
+    while read start_point end_point 
+    do
+        if [ $start_point = "exit" ]; then
+            exit
+        fi
+
+        expr ${start_point} + ${end_point} > /dev/null 2>&1 # numeric check
+        if [ $? -ne 2 ] ; then
+            echo "check... ok."
+            break
+        else
+            echo "incorrect input. Please retype [y1 y2]"
+            echo -n ">"
+        fi
+    done
+
+    for cgn_ctrl_var in "${cgn_ctrl[@]}" 
+    do
+        for rtt1_var in "${rtt1[@]}"
+        do
+            for rtt2_var in "${rtt2[@]}"
+            do
+                if [ ${rtt1_var} != ${rtt2_var} ] ; then
+                    continue
+                fi
+                for loss_var in "${loss[@]}"
+                do
+                    for repeat_i in `seq ${repeat}` 
+                    do
+                        targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}/${repeat_i}th
+                        echo -n "$targetdir ..."                           
+                        cd $targetdir
+                        awk -v startpoint=${start_point} -v endpoint=${end_point} -v scale=${scale} '{
+                            if($2~"yrange"){
+                                printf("set yrange [%s:%s]\n",startpoint,endpoint) 
+                            }else{
+                                print
+                            }
+                        }' ${targetname}.plt > ${targetname}_yrange[${start_point},${end_point}].plt
+                        gnuplot ${targetname}_yrange[${start_point},${end_point}].plt 2>/dev/null
+                        echo "done"
+                        cd ../..
+                    done
+                done
+            done
+        done
+    done
+
+    for cgn_ctrl_var in "${cgn_ctrl[@]}" 
+    do
+        for queue_var in "${queue[@]}"
+        do
+            if [ ${rtt1_var} != ${rtt2_var} ] ; then
+                continue
+            fi
+            for loss_var in "${loss[@]}"
+            do
+                for repeat_i in `seq ${repeat}` 
+                do
+                    targetdir=${cgn_ctrl_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
+                    echo -n "$targetdir ..."                           
+                    cd $targetdir
+                    awk -v startpoint=${start_point} -v endpoint=${end_point} -v scale=${scale} '{
+                        if($2~"yrange"){
+                            printf("set yrange [%s:%s]\n",startpoint,endpoint) 
+                        }else{
+                            print
+                        }
+                    }' ${targetname}.plt > ${targetname}_yrange[${start_point},${end_point}].plt
+                    gnuplot ${targetname}_yrange[${start_point},${end_point}].plt 2>/dev/null
+                    echo "done"
+                    cd ../..
+                done
+            done
+        done
+    done
+
+
+}

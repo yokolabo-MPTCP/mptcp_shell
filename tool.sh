@@ -34,11 +34,13 @@ else
 fi
 
 echo "Please select you want to do."
-select VAR in "Change graph range" "Build tex" "exit"
+select VAR in "Change graph x range" "Change graph y range" "Build tex" "exit"
 do
-    if [ "$VAR" = "Change graph range" ];then
+    if [ "$VAR" = "Change graph x range" ];then
         change_graph_xrange
         break
+    elif [ "$VAR" = "Change graph y range" ];then
+        change_graph_yrange
     elif [ "$VAR" = "Build tex" ];then
         build_tex_to_pdf 
         break
