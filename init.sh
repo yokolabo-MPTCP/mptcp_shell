@@ -1,5 +1,20 @@
 #!/bin/bash -u
 
+eth0=enp0s31f6      # NIC name
+eth1=enp2s0
+
+eth0_nw=192.168.3.0 # network
+eth1_nw=192.168.4.0
+
+eth0_ip=192.168.3.1 # IP address
+eth1_ip=192.168.4.1
+
+eth0_gw=192.168.3.2 # Gateway IP address
+eth1_gw=192.168.4.2
+
+band1=100           # bandwidth
+band2=100
+
 function check_root_user {
 	if [ $(whoami) != "root" ]; then
 		echo "Permission denied"
@@ -25,37 +40,32 @@ sysctl -w net.ipv4.tcp_frto=0
 sysctl -w net.ipv4.tcp_ecn=0
 sysctl net.mptcp.mptcp_debug=0
 
+service network-manager stop
+service networking start
 
 echo "add ip address"
-ip addr add 192.168.3.1/24 dev enp0s31f6
-ip addr add 192.168.4.1/24 dev enp2s0 
+ip addr add ${eth0_ip}/24 dev ${eth0}
+ip addr add ${eth1_ip}/24 dev ${eth1} 
 
 echo "interface settings"
 
-ethtool -s enp0s31f6 speed 100 duplex full
-ethtool -s enp2s0 speed 100 duplex full
+ethtool -s ${eth0} speed ${band1} duplex full
+ethtool -s ${eth1} speed ${band2} duplex full
 
-ethtool -K enp0s31f6 rx off tso off tx off
-ethtool -K enp2s0 rx off tso off tx off
+ethtool -K ${eth0} rx off tso off tx off
+ethtool -K ${eth1} rx off tso off tx off
 
 echo "routing settings"
 
-ip rule add from 192.168.3.1 table 1
-ip rule add to 192.168.13.0/24 table 1
-ip rule add from 192.168.4.1 table 2
-ip rule add to 192.168.14.0/24 table 2
+ip rule add from ${eth0_ip} table 1
+ip rule add from ${eth1_ip} table 2
 
-ip route add 192.168.3.0/24 dev enp0s31f6 scope link table 1
-ip route add default via 192.168.3.2 dev enp0s31f6 table 1
+ip route add ${eth0_nw}/24 dev ${eth0} scope link table 1
+ip route add default via ${eth0_gw} dev ${eth0} table 1
 
-ip route add 192.168.4.0/24 dev enp2s0 scope link table 2
-ip route add default via 192.168.4.2 dev enp2s0 table 2
+ip route add ${eth1_nw}/24 dev ${eth1} scope link table 2
+ip route add default via ${eth1_gw} dev ${eth1} table 2
 
-ip route add 192.168.15.0/24 dev enp0s31f6
+ip route add default scope global nexthop via ${eth0_gw} dev ${eth0}
 
-ip route add default scope global nexthop via 192.168.13.1 dev enp0s31f6
-ip route add default scope global nexthop via 192.168.14.1 dev enp2s0
-
-service network-manager stop
-service networking start
 
