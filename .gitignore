@@ -1,0 +1,9 @@
+# 実験結果のディレクトリをgitで無視する
+
+/20*/ 
+
+# default.conf以外の.confファイルを無視する
+
+/*.conf
+!/default.conf
+!/vbox.conf
