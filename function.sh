@@ -480,7 +480,7 @@ function create_plt_file {
     fi
      
     gnuplotversion=$(gnuplot --version)
-    gnuplotversion=$(echo ${gnuplotversion:9:1})
+    gnuplotversion=$(echo ${gnuplotversion:8:1})
     if [ ${gnuplotversion} -eq 5 ]; then
         spacing=3
     else
