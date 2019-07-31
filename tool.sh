@@ -24,9 +24,9 @@ elif [ $# = 1 ]; then
     else
         source $1/default.conf
         
-        today=$1
-        today=$(echo ${today%/})
-        cd $today
+        rootdir=$1
+        rootdir=$(echo ${rootdir%/})
+        cd $rootdir
     fi
 else
     echo -e $message

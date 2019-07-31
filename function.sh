@@ -177,13 +177,6 @@ function set_default_kernel_parameter {
     sysctl net.ipv4.tcp_limit_output_bytes=${tcp_limit_output_bytes}
     sysctl net.ipv4.tcp_pacing_ca_ratio=${tcp_pacing_ca_ratio}
     sysctl net.ipv4.tcp_pacing_ss_ratio=${tcp_pacing_ss_ratio}
-
-    if [ $mptcp_ver = 0.86 ]; then
-        sysctl net.mptcp.mptcp_no_recvbuf_auto=$no_rcv
-        sysctl net.core.netdev_debug=0
-        sysctl net.mptcp.mptcp_cwnd_log=1
-    fi
-
     
 }
 
@@ -547,7 +540,7 @@ function create_graph_img {
 
 function create_each_tex_file {
     local targetname=$1
-    local tex_name=tex/${cgn_ctrl_var}_${targetname}_${today}.tex
+    local tex_name=tex/${cgn_ctrl_var}_${targetname}_${rootdir}.tex
     local img_name=${targetname}_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png
 
     if [ $# -ne 1 ]; then
@@ -609,7 +602,7 @@ function create_throughput_time_graph_plt {
 
 function create_throughput_time_tex {
     local targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
-    local tex_name=tex/${cgn_ctrl_var}_throughput_time_${today}.tex
+    local tex_name=tex/${cgn_ctrl_var}_throughput_time_${rootdir}.tex
     local img_name=throughput_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png
 
     echo "\begin{figure}[htbp]" >> ${tex_name}
@@ -907,7 +900,7 @@ function create_throughput_queue_graph {
 function create_throughput_queue_tex {
     local targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
     local repeat_i
-    local tex_file_name=${cgn_ctrl_var}_throughput_queue_${today}
+    local tex_file_name=${cgn_ctrl_var}_throughput_queue_${rootdir}
     
     cd tex
 
@@ -951,7 +944,7 @@ function create_all_each_graph_tex {
 }
 
 function create_all_graph_tex {
-    local tex_name=tex/${cgn_ctrl_var}_alldata_${today}.tex
+    local tex_name=tex/${cgn_ctrl_var}_alldata_${rootdir}.tex
 
     echo "\begin{center}${cgn_ctrl_var} LOSS=${loss_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms queue=${queue_var}pkt ${repeat_i}th \end{center}" >> ${tex_name} 
     echo "\begin{multicols}{2}" >> ${tex_name}
@@ -1100,7 +1093,7 @@ function create_throughput_rtt_graph_gnuplot {
 function create_throughput_rtt_graph_tex {
     local targetdir=${cgn_ctrl_var}_loss=${loss_var}_queue=${queue_var}
     local repeat_i
-    local tex_file_name=${cgn_ctrl_var}_throughput_rtt_${today}
+    local tex_file_name=${cgn_ctrl_var}_throughput_rtt_${rootdir}
     
     cd tex
 
@@ -1231,20 +1224,20 @@ function build_tex_to_pdf {
     do
         for item_var in "${item_to_create_graph[@]}" 
         do
-            platex_dvipdfmx_link ${cgn_ctrl_var}_${item_var}_${today} 
+            platex_dvipdfmx_link ${cgn_ctrl_var}_${item_var}_${rootdir} 
         done
 
-        platex_dvipdfmx_link ${cgn_ctrl_var}_throughput_queue_${today} 
+        platex_dvipdfmx_link ${cgn_ctrl_var}_throughput_queue_${rootdir} 
 
-        platex_dvipdfmx_link ${cgn_ctrl_var}_throughput_queue_${today}_ave
+        platex_dvipdfmx_link ${cgn_ctrl_var}_throughput_queue_${rootdir}_ave
         
-        platex_dvipdfmx_link ${cgn_ctrl_var}_throughput_rtt_${today}
+        platex_dvipdfmx_link ${cgn_ctrl_var}_throughput_rtt_${rootdir}
         
-        platex_dvipdfmx_link ${cgn_ctrl_var}_throughput_rtt_${today}_ave
+        platex_dvipdfmx_link ${cgn_ctrl_var}_throughput_rtt_${rootdir}_ave
 
-        platex_dvipdfmx_link ${cgn_ctrl_var}_throughput_time_${today}
+        platex_dvipdfmx_link ${cgn_ctrl_var}_throughput_time_${rootdir}
 
-        platex_dvipdfmx_link ${cgn_ctrl_var}_alldata_${today}
+        platex_dvipdfmx_link ${cgn_ctrl_var}_alldata_${rootdir}
 
         rm -f ${cgn_ctrl_var}*.log
         rm -f ${cgn_ctrl_var}*.dvi
@@ -1324,28 +1317,28 @@ function join_header_and_tex_file {
     do
         for item_var in "${item_to_create_graph[@]}" 
         do
-            tex_file_name=${cgn_ctrl_var}_${item_var}_${today}
+            tex_file_name=${cgn_ctrl_var}_${item_var}_${rootdir}
             create_tex_header ${item_var}
             join_header ${tex_file_name}     
         done
 
-        tex_file_name=${cgn_ctrl_var}_throughput_queue_${today}
+        tex_file_name=${cgn_ctrl_var}_throughput_queue_${rootdir}
         create_tex_header "Throughput queue"
         join_header ${tex_file_name}
         create_tex_header "Throughput queue ${repeat} repeat"
         join_header ${tex_file_name}_ave
 
-        tex_file_name=${cgn_ctrl_var}_throughput_rtt_${today}
+        tex_file_name=${cgn_ctrl_var}_throughput_rtt_${rootdir}
         create_tex_header "Throughput rtt"
         join_header ${tex_file_name}
         create_tex_header "Throughput rtt ${repeat} repeat"
         join_header ${tex_file_name}_ave
 
-        tex_file_name=${cgn_ctrl_var}_throughput_time_${today}
+        tex_file_name=${cgn_ctrl_var}_throughput_time_${rootdir}
         create_tex_header "Throughput time"
         join_header ${tex_file_name}
 
-        tex_file_name=${cgn_ctrl_var}_alldata_${today}
+        tex_file_name=${cgn_ctrl_var}_alldata_${rootdir}
         create_tex_header "Alldata"
         join_header ${tex_file_name}
     done
