@@ -17,7 +17,7 @@ check_exist_config_file
 
 kernel=$(uname -r)
 mptcp_ver=$(get_mptcp_version)
-#check_network_available
+check_network_available
 
 rcvkernel=$(ssh root@${receiver_ip} 'uname -r')
 
