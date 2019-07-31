@@ -25,6 +25,7 @@ elif [ $# = 1 ]; then
         source $1/default.conf
         
         today=$1
+        today=$(echo ${today%/})
         cd $today
     fi
 else
