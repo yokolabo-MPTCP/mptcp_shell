@@ -471,12 +471,22 @@ function create_plt_file {
     local targetname=$1
     local targetpos
     local scale=`echo "scale=1; $duration / 5.0" | bc`
-    
+    local spacing 
+    local gnuplotversion
+
     if [ $# -ne 1 ]; then
         echo "create_plt_file:argument error"
         exit 1
     fi
-    
+     
+    gnuplotversion=$(gnuplot --version)
+    gnuplotversion=$(echo ${gnuplotversion:9:1})
+    if [ ${gnuplotversion} -eq 5 ]; then
+        spacing=3
+    else
+        spacing=8
+    fi
+
     targetpos=$(awk -v targetname=${targetname} '{
         targetname2=targetname"*" 
         for(i=1;i<=NF;i++){
@@ -492,10 +502,10 @@ function create_plt_file {
     echo 'set terminal emf enhanced "Arial, 24"
     set terminal png size 960,720
     set key outside
-    set key spacing 3
     set size ratio 0.5
     set xlabel "time[s]"
     set datafile separator " " ' > ${targetdir}/${targetname}.plt
+    echo "set key spacing ${spacing}" >> ${targetdir}/${targetname}.plt
     echo "set ylabel \"${targetname}\"" >> ${targetdir}/${targetname}.plt
     echo "set xtics $scale" >> ${targetdir}/${targetname}.plt
     echo "set xrange [0:${duration}]" >> ${targetdir}/${targetname}.plt
