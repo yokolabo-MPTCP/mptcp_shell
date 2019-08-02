@@ -436,34 +436,24 @@ function extract_cwnd_each_flow {
 }
 
 function count_mptcp_state {
-    targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
+    local targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
     local app_i
     local subflow_i
-    for app_i in `seq ${app}` 
-    do
-        for subflow_i in `seq ${subflownum}` 
-        do
-            grep -ic "send_stall" ./${targetdir}/log/cwnd${app_i}_subflow${subflow_i}.dat > ./${targetdir}/log/cwnd${app_i}_subflow${subflow_i}_sendstall.dat
+    local var
 
+    local count_state_name=(tcp_enter_cwr rcv_buf_opti)
+
+    for var in "${count_state_name[@]}" 
+        for app_i in `seq ${app}` 
+        do
+            for subflow_i in `seq ${subflownum}` 
+            do
+                grep -ic "${var}" ./${targetdir}/log/cwnd${app_i}_subflow${subflow_i}.dat > ./${targetdir}/log/cwnd${app_i}_subflow${subflow_i}_${var}.dat
+
+            done
         done
     done
-
-    for app_i in `seq ${app}` 
-    do
-        for subflow_i in `seq ${subflownum}` 
-        do
-            grep -ic "cwnd_reduced" ./${targetdir}/log/cwnd${app_i}_subflow${subflow_i}.dat > ./${targetdir}/log/cwnd${app_i}_subflow${subflow_i}_cwndreduced.dat
-        done
-    done
-
-    for app_i in `seq ${app}` 
-    do
-        for subflow_i in `seq ${subflownum}` 
-        do
-            grep -ic "rcv_buf" ./${targetdir}/log/cwnd${app_i}_subflow${subflow_i}.dat > ./${targetdir}/log/cwnd${app_i}_subflow${subflow_i}_rcv_buf.dat
-        done
-    done
-}
+    }
 
 function create_plt_file {
     local app_i
@@ -517,9 +507,8 @@ function create_plt_file {
     do
         for subflow_i in `seq ${subflownum}` 
         do
-            cwndreduced=$(awk 'NR==1' ./${targetdir}/log/cwnd${app_i}_subflow${subflow_i}_cwndreduced.dat)
-            sendstall=$(awk 'NR==1' ./${targetdir}/log/cwnd${app_i}_subflow${subflow_i}_sendstall.dat)
-            rcv_buf=$(awk 'NR==1' ./${targetdir}/log/cwnd${app_i}_subflow${subflow_i}_rcv_buf.dat)
+            sendstall=$(awk 'NR==1' ./${targetdir}/log/cwnd${app_i}_subflow${subflow_i}_tcp_enter_cwr.dat)
+            rcv_buf=$(awk 'NR==1' ./${targetdir}/log/cwnd${app_i}_subflow${subflow_i}_rcv_buf_opti.dat)
             echo -n "\"./log/cwnd${app_i}_subflow${subflow_i}.dat\" using 1:${targetpos} with lines linewidth 2 title \"APP${app_i} : subflow${subflow_i}   \n sendstall=${sendstall}\nrcvbuf=${rcv_buf}\" " >> ${targetdir}/${targetname}.plt
             if [ $app_i != $app ] || [ $subflow_i != $subflownum ];then
 
