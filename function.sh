@@ -441,9 +441,7 @@ function count_mptcp_state {
     local subflow_i
     local var
 
-    local count_state_name=(tcp_enter_cwr rcv_buf_opti)
-
-    for var in "${count_state_name[@]}" 
+    for var in "${item_to_count_state[@]}" 
         for app_i in `seq ${app}` 
         do
             for subflow_i in `seq ${subflownum}` 
@@ -463,6 +461,8 @@ function create_plt_file {
     local scale=`echo "scale=1; $duration / 5.0" | bc`
     local spacing 
     local gnuplotversion
+    local statecount
+    local var
 
     if [ $# -ne 1 ]; then
         echo "create_plt_file:argument error"
@@ -472,10 +472,11 @@ function create_plt_file {
     gnuplotversion=$(gnuplot --version)
     gnuplotversion=$(echo ${gnuplotversion:8:1})
     if [ ${gnuplotversion} -eq 5 ]; then
-        spacing=3
+        spacing=1
     else
-        spacing=8
+        spacing=5
     fi
+    spacing=$((${spacing} + ${#array[@]}))
 
     targetpos=$(awk -v targetname=${targetname} '{
         targetname2=targetname"*" 
@@ -507,9 +508,12 @@ function create_plt_file {
     do
         for subflow_i in `seq ${subflownum}` 
         do
-            sendstall=$(awk 'NR==1' ./${targetdir}/log/cwnd${app_i}_subflow${subflow_i}_tcp_enter_cwr.dat)
-            rcv_buf=$(awk 'NR==1' ./${targetdir}/log/cwnd${app_i}_subflow${subflow_i}_rcv_buf_opti.dat)
-            echo -n "\"./log/cwnd${app_i}_subflow${subflow_i}.dat\" using 1:${targetpos} with lines linewidth 2 title \"APP${app_i} : subflow${subflow_i}   \n sendstall=${sendstall}\nrcvbuf=${rcv_buf}\" " >> ${targetdir}/${targetname}.plt
+            echo -n "\"./log/cwnd${app_i}_subflow${subflow_i}.dat\" using 1:${targetpos} with lines linewidth 2 title \"APP${app_i} : subflow${subflow_i} " >> ${targetdir}/${targetname}.plt
+            for var in "${item_to_count_state[@]}" 
+                statecount=$(awk 'NR==1' ./${targetdir}/log/cwnd${app_i}_subflow${subflow_i}_${var}.dat)
+                echo -n "\n ${var}=${statecount}\" " >> ${targetdir}/${targetname}.plt
+            done
+            echo -n "\" " >> ${targetdir}/${targetname}.plt
             if [ $app_i != $app ] || [ $subflow_i != $subflownum ];then
 
                echo -n " , " >> ${targetdir}/${targetname}.plt
