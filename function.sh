@@ -205,6 +205,18 @@ function set_netem_rtt_and_loss {
     
 }
 
+function get_user_name_and_rewrite_config {
+    local username=$SUDO_USER
+    awk -v username=${username} -F = '{
+        if($1~"author"){
+            printf("author=\"%s\"\n",username) 
+        }else{
+            print
+        }
+    }' default.conf > out
+    mv -f out default.conf
+}
+
 function clean_log_sender_and_receiver {
     ssh root@${receiver_ip} "echo > /var/log/kern.log" > /dev/null
     echo > /var/log/kern.log

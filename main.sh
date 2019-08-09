@@ -30,6 +30,7 @@ cp -f ${configfile} ${rootdir}/default.conf
 
 cd ${rootdir}
 
+get_user_name_and_rewrite_config
 set_bandwidth
 set_qdisc
 set_default_kernel_parameter
