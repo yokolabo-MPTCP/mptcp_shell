@@ -442,6 +442,7 @@ function count_mptcp_state {
     local var
 
     for var in "${item_to_count_state[@]}" 
+    do    
         for app_i in `seq ${app}` 
         do
             for subflow_i in `seq ${subflownum}` 
@@ -476,7 +477,7 @@ function create_plt_file {
     else
         spacing=5
     fi
-    spacing=$((${spacing} + ${#array[@]}))
+    spacing=$((${spacing} + ${#item_to_count_state[@]}))
 
     targetpos=$(awk -v targetname=${targetname} '{
         targetname2=targetname"*" 
@@ -510,8 +511,9 @@ function create_plt_file {
         do
             echo -n "\"./log/cwnd${app_i}_subflow${subflow_i}.dat\" using 1:${targetpos} with lines linewidth 2 title \"APP${app_i} : subflow${subflow_i} " >> ${targetdir}/${targetname}.plt
             for var in "${item_to_count_state[@]}" 
+            do
                 statecount=$(awk 'NR==1' ./${targetdir}/log/cwnd${app_i}_subflow${subflow_i}_${var}.dat)
-                echo -n "\n ${var}=${statecount}\" " >> ${targetdir}/${targetname}.plt
+                echo -n "\n ${var}=${statecount} " >> ${targetdir}/${targetname}.plt
             done
             echo -n "\" " >> ${targetdir}/${targetname}.plt
             if [ $app_i != $app ] || [ $subflow_i != $subflownum ];then
