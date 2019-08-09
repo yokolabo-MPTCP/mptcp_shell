@@ -171,15 +171,6 @@ function make_directory {
     echo "done"
 }
 
-function set_default_kernel_parameter {
-    sysctl net.mptcp.mptcp_debug=${mptcp_debug}
-    sysctl net.mptcp.mptcp_enabled=${mptcp_enabled}
-    sysctl net.ipv4.tcp_limit_output_bytes=${tcp_limit_output_bytes}
-    sysctl net.ipv4.tcp_pacing_ca_ratio=${tcp_pacing_ca_ratio}
-    sysctl net.ipv4.tcp_pacing_ss_ratio=${tcp_pacing_ss_ratio}
-    
-}
-
 function echo_finish_time {
     local process_time=135 # 一回の実験に必要なデータ処理時間 
     local timestamp
