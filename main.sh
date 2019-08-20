@@ -18,6 +18,7 @@ check_exist_config_file
 kernel=$(uname -r)
 mptcp_ver=$(get_mptcp_version)
 check_network_available
+set_kernel_parameter
 
 rcvkernel=$(ssh root@${receiver_ip} 'uname -r')
 
@@ -31,10 +32,7 @@ cp -f ${configfile} ${rootdir}/default.conf
 cd ${rootdir}
 
 get_user_name_and_rewrite_config
-set_bandwidth
 set_qdisc
-set_default_kernel_parameter
-set_user_kernel_parameter
 
 echo_finish_time
 echo_data_byte

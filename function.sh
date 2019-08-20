@@ -38,6 +38,28 @@ function check_root_user {
 	fi	
 }
 
+function set_kernel_parameter { 
+    local var 
+    for var in "${sysctl_default_kernel_parameter[@]}" 
+    do
+        sysctl ${var} || check_sysctl_error
+    done
+    
+    for var in "${sysctl_user_kernel_parameter[@]}" 
+    do
+        sysctl ${var} || check_sysctl_error
+    done
+
+}
+
+function check_sysctl_error { 
+    # sysctl parameter check
+    echo ""
+    echo "Invalid argument of sysctl parameter."
+    echo "Please check .conf and kernel program."
+    exit	
+}
+
 function get_mptcp_version () {
 
     local kernel=$(uname -r)
@@ -232,14 +254,6 @@ function set_txqueuelen {
 function set_qdisc {
     tc qdisc replace dev ${eth0} root ${qdisc}
     tc qdisc replace dev ${eth1} root ${qdisc}
-}
-
-function set_bandwidth {
-    echo -n "setting bandwidth ..." 
-    ethtool -s ${eth0} speed ${band1} duplex full
-    ethtool -s ${eth1} speed ${band2} duplex full
-    sleep 5
-    echo "done" 
 }
 
 function run_iperf {
