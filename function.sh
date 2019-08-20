@@ -245,10 +245,16 @@ function make_directory {
 }
 
 function echo_finish_time {
-    local process_time=135 # 一回の実験に必要なデータ処理時間 
+    local process_time
     local timestamp
     local time
-     
+    
+    if [ ${mptcp_ver} == "sptcp" ]; then
+        process_time=70 # sptcp 一回の実験に必要なデータ処理時間 [s]  
+    else
+        process_time=135 # mptcp 一回の実験に必要なデータ処理時間 [s] 
+    fi
+
     time=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} * ($duration+${process_time}) * $repeat " | bc`
     ((sec=time%60, min=(time%3600)/60, hrs=time/3600))
     timestamp=$(printf "%d時間%02d分%02d秒" $hrs $min $sec)
@@ -257,7 +263,14 @@ function echo_finish_time {
 
 function echo_data_byte {
     local byte
-    local one_data=3.8 # 一回の実験に必要なデータ量
+    local one_data
+
+    if [ ${mptcp_ver} == "sptcp" ]; then
+        one_data=0.0188 # sptcp 一回の実験に必要なデータ量 [GB]  
+    else
+        one_data=3.8 # mptcp 一回の実験に必要なデータ量 [GB] 
+    fi
+
     byte=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} *${one_data} * $repeat " | bc`
     echo "予想使用データ量 ${byte} GB"
 }
@@ -1510,6 +1523,7 @@ function process_log_data {
                                 create_throughput_time_graph
                                 create_throughput_time_tex
                                 create_all_graph_tex
+                                deleat_and_compress_processed_log_data
                                 (( current_count++))
                             done
                             process_throughput_data_ave
@@ -1524,6 +1538,15 @@ function process_log_data {
     create_throughput_ext_graph
     create_throughput_rtt_graph
     echo "processing data ...done                                    "
+}
+
+function deleat_and_compress_processed_log_data {
+    local targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th/log
+    cd ${targetdir}
+    tar cvzf kern.dat.tar.gz kern.dat > /dev/null 2>&1
+
+    rm -f *.dat 
+    cd ../../../
 }
 
 function platex_dvipdfmx_link {
@@ -1868,4 +1891,55 @@ function change_graph_yrange {
     done
 
 
+}
+
+function decompression_and_reprocess_log_data {
+    local cgn_ctrl_var  
+    local extended_var
+    local rtt1_var  
+    local rtt2_var  
+    local queue_var  
+    local repeat_i 
+    local targetdir
+    local app_meta=()
+    local total_count=`echo "scale=1; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} * $repeat " | bc`
+    local current_count=0
+
+    for cgn_ctrl_var in "${cgn_ctrl[@]}" 
+    do
+        for extended_var in "${extended_parameter[@]}" 
+        do
+            for loss_var in "${loss[@]}"
+            do
+                for rtt1_var in "${rtt1[@]}"
+                do
+                    for rtt2_var in "${rtt2[@]}"
+                    do
+                        if [ ${rtt1_var} != ${rtt2_var} ] ; then
+                            continue
+                        fi
+                        for queue_var in "${queue[@]}"
+                        do
+                            for repeat_i in `seq ${repeat}` 
+                            do
+                                targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th/log
+                                cd ${targetdir}
+                                tar xzf kern.dat.tar.gz  > /dev/null 2>&1
+                                cd ../../../
+                                percent=`echo "scale=3; $current_count / $total_count * 100 " | bc`
+                                percent=`echo "scale=1; $percent / 1 " | bc`
+                                echo -ne "reprocessing data ...${percent}% (${current_count} / ${total_count})\r"
+                                separate_cwnd
+                                get_app_meta
+                                extract_cwnd_each_flow
+                                count_mptcp_state
+                                (( current_count++))
+                            done
+                        done    
+                    done
+                done
+            done
+        done
+    done
+    echo "reprocessing data ...done                                    "
 }

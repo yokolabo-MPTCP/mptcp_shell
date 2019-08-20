@@ -79,6 +79,7 @@ process_log_data
 join_header_and_tex_file
 build_tex_to_pdf
 
+
 umask 022
 
 date
