@@ -90,7 +90,10 @@ function get_mptcp_version () {
         mptcp_ver=unknown
         echo "$kernel"
         echo "error: mptcp_ver is unkown"
-        exit
+    fi
+
+    if [[ $kernel == *sptcp* ]]; then
+        mptcp_ver=sptcp
     fi
 
     echo "$mptcp_ver"
@@ -593,11 +596,25 @@ function create_tex_file {
 
 }
 
+function set_yrange_max {
+    local yrange_max
+
+    if [ ${mptcp_ver} == "sptcp" ] ; then
+        yrangemax=$band1
+    else
+        yrangemax=$(( band1 + band2 ))
+    fi
+
+    echo ${yrangemax}
+}
+
 function create_throughput_time_graph_plt {
     local app_i
-    local yrangemax=$(( band1 + band2 ))
+    local yrangemax
     local targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
     local pltfile=${targetdir}/${repeat_i}th/throughput/plot.plt
+    
+    yrangemax=$(set_yrange_max)
     
     echo 'set terminal emf enhanced "Arial, 24"
     set terminal png size 960,720
@@ -797,7 +814,10 @@ function create_throughput_queue_graph_plt {
     local repeat_i 
     local app_i
     local queue_var
-    local yrangemax=$(( band1 + band2 ))
+    local yrangemax
+
+    yrangemax=$(set_yrange_max)
+
     targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
     
     for repeat_i in `seq ${repeat}` 
@@ -983,8 +1003,11 @@ function create_all_graph_tex {
 
 function create_throughput_rtt_graph_plt {
     local targetdir
-    local yrangemax=$(( band1 + band2 ))
+    local yrangemax
     local repeat_i
+
+    yrangemax=$(set_yrange_max)
+
     for repeat_i in `seq ${repeat}` 
     do
         targetdir=${cgn_ctrl_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
