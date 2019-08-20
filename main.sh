@@ -14,6 +14,7 @@ fi
 check_argument $@
 check_root_user
 check_exist_config_file
+check_exist_extended_parameter
 
 kernel=$(uname -r)
 mptcp_ver=$(get_mptcp_version)
@@ -40,43 +41,44 @@ echo_data_byte
 for cgn_ctrl_var in "${cgn_ctrl[@]}" 
 do
 	sysctl net.ipv4.tcp_congestion_control=${cgn_ctrl_var}
-    for loss_var in "${loss[@]}"
+    for extended_var in "${extended_parameter[@]}" 
     do
-        for rtt1_var in "${rtt1[@]}"
+        extended_function ${extended_var}
+        for loss_var in "${loss[@]}"
         do
-            for rtt2_var in "${rtt2[@]}"
+            for rtt1_var in "${rtt1[@]}"
             do
-                
-                set_netem_rtt_and_loss
-				if [ $rtt1_var != $rtt2_var ]; then
-					continue
-					
-				fi	
-                for queue_var in "${queue[@]}"
-				do
-                    set_txqueuelen
-                    for repeat_i in `seq ${repeat}` 
-					do
-					
-						echo -n "${cgn_ctrl_var} LOSS=${loss_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms queue=${queue_var}pkt ${repeat_i}回目 ..."
+                for rtt2_var in "${rtt2[@]}"
+                do
+                    
+                    set_netem_rtt_and_loss
+                    if [ $rtt1_var != $rtt2_var ]; then
+                        continue
+                        
+                    fi	
+                    for queue_var in "${queue[@]}"
+                    do
+                        set_txqueuelen
+                        for repeat_i in `seq ${repeat}` 
+                        do
+                        
+                            echo -n "${cgn_ctrl_var} ext=${extended_var} LOSS=${loss_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms queue=${queue_var}pkt ${repeat_i}回目 ..."
 
-                        clean_log_sender_and_receiver
-                        run_iperf
-						format_and_copy_log
-                        echo "done"
-					done
+                            clean_log_sender_and_receiver
+                            run_iperf
+                            format_and_copy_log
+                            echo "done"
+                        done
+                    done
 				done
 			done
 		done
 	done
 done
-
 process_log_data
 join_header_and_tex_file
 build_tex_to_pdf
 
-
-sysctl net.mptcp.mptcp_debug=0
 umask 022
 
 date

@@ -52,6 +52,24 @@ function set_kernel_parameter {
 
 }
 
+function check_exist_extended_parameter {
+    if [ ${#extended_parameter[@]} -eq 0 ]; then
+        extended_parameter+=("null")
+    fi
+}
+
+function extended_function {
+    local var=$1
+    if [ ${var} != "null" ]; then
+        set_extended_kernel_parameter ${var}
+    fi
+}
+
+function set_extended_kernel_parameter { 
+    local var=$1 
+    sysctl ${extended_parameter_name}=${var} || check_sysctl_error
+}
+
 function check_sysctl_error { 
     # sysctl parameter check
     echo ""
@@ -125,6 +143,7 @@ function check_network_available {
 }
 
 function make_directory {
+    local extended_var
     local cgn_ctrl_var  
     local rtt1_var  
     local rtt2_var  
@@ -139,37 +158,41 @@ function make_directory {
 
     for cgn_ctrl_var in "${cgn_ctrl[@]}" 
     do
-        for rtt1_var in "${rtt1[@]}"
+        for extended_var in "${extended_parameter[@]}" 
         do
-            for rtt2_var in "${rtt2[@]}"
+        
+            for rtt1_var in "${rtt1[@]}"
             do
-                if [ ${rtt1_var} != ${rtt2_var} ] ; then
-                    continue
-                fi
-                for loss_var in "${loss[@]}"
+                for rtt2_var in "${rtt2[@]}"
                 do
-                    targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
-                    mkdir ${rootdir}/${targetdir}
-                    mkdir ${rootdir}/${targetdir}/ave
-                    for repeat_i in `seq ${repeat}` 
+                    if [ ${rtt1_var} != ${rtt2_var} ] ; then
+                        continue
+                    fi
+                    for loss_var in "${loss[@]}"
                     do
-                        mkdir ${rootdir}/${targetdir}/${repeat_i}th
-                    done
-
-                    for queue_var in "${queue[@]}"
-                    do
-                        targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
+                        targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
                         mkdir ${rootdir}/${targetdir}
                         mkdir ${rootdir}/${targetdir}/ave
-                        mkdir ${rootdir}/${targetdir}/ave/throughput
                         for repeat_i in `seq ${repeat}` 
                         do
                             mkdir ${rootdir}/${targetdir}/${repeat_i}th
-                            mkdir ${rootdir}/${targetdir}/${repeat_i}th/log
-                            mkdir ${rootdir}/${targetdir}/${repeat_i}th/throughput
-
                         done
-                    done    
+
+                        for queue_var in "${queue[@]}"
+                        do
+                            targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
+                            mkdir ${rootdir}/${targetdir}
+                            mkdir ${rootdir}/${targetdir}/ave
+                            mkdir ${rootdir}/${targetdir}/ave/throughput
+                            for repeat_i in `seq ${repeat}` 
+                            do
+                                mkdir ${rootdir}/${targetdir}/${repeat_i}th
+                                mkdir ${rootdir}/${targetdir}/${repeat_i}th/log
+                                mkdir ${rootdir}/${targetdir}/${repeat_i}th/throughput
+
+                            done
+                        done    
+                    done
                 done
             done
         done
@@ -177,21 +200,46 @@ function make_directory {
 
     for cgn_ctrl_var in "${cgn_ctrl[@]}" 
     do
-        for loss_var in "${loss[@]}"
+        for extended_var in "${extended_parameter[@]}" 
         do
-            for queue_var in "${queue[@]}"
+            for loss_var in "${loss[@]}"
             do
-                targetdir=${cgn_ctrl_var}_loss=${loss_var}_queue=${queue_var}
-                mkdir ${rootdir}/${targetdir} 
-                mkdir ${rootdir}/${targetdir}/ave
-                for repeat_i in `seq ${repeat}` 
+                for queue_var in "${queue[@]}"
                 do
-                    mkdir ${rootdir}/${targetdir}/${repeat_i}th
+                    targetdir=${cgn_ctrl_var}_ext=${extended_var}_loss=${loss_var}_queue=${queue_var}
+                    mkdir ${rootdir}/${targetdir} 
+                    mkdir ${rootdir}/${targetdir}/ave
+                    for repeat_i in `seq ${repeat}` 
+                    do
+                        mkdir ${rootdir}/${targetdir}/${repeat_i}th
+                    done
                 done
             done
         done
     done
 
+    for cgn_ctrl_var in "${cgn_ctrl[@]}" 
+    do
+        for rtt1_var in "${rtt1[@]}"
+        do
+            for rtt2_var in "${rtt2[@]}"
+            do
+                for loss_var in "${loss[@]}"
+                do
+                    for queue_var in "${queue[@]}"
+                    do
+                        targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
+                        mkdir ${rootdir}/${targetdir} 
+                        mkdir ${rootdir}/${targetdir}/ave
+                        for repeat_i in `seq ${repeat}` 
+                        do
+                            mkdir ${rootdir}/${targetdir}/${repeat_i}th
+                        done
+                    done
+                done
+            done
+        done
+    done
 
     echo "done"
 }
@@ -201,7 +249,7 @@ function echo_finish_time {
     local timestamp
     local time
      
-    time=`echo "scale=5; ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} * ($duration+${process_time}) * $repeat " | bc`
+    time=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} * ($duration+${process_time}) * $repeat " | bc`
     ((sec=time%60, min=(time%3600)/60, hrs=time/3600))
     timestamp=$(printf "%d時間%02d分%02d秒" $hrs $min $sec)
     echo "予想終了時刻 `date --date "$time seconds"` ${timestamp} "
@@ -210,7 +258,7 @@ function echo_finish_time {
 function echo_data_byte {
     local byte
     local one_data=3.8 # 一回の実験に必要なデータ量
-    byte=`echo "scale=5; ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} *${one_data} * $repeat " | bc`
+    byte=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} *${one_data} * $repeat " | bc`
     echo "予想使用データ量 ${byte} GB"
 }
     
@@ -262,7 +310,7 @@ function set_qdisc {
 function run_iperf {
     local app_i 
     local delay
-    local nowdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
+    local nowdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
     for app_i in `seq ${app}` 
     do
 		delay=`echo "scale=5; $duration + ($app - $app_i) * $app_delay " | bc`
@@ -277,7 +325,7 @@ function run_iperf {
 
 function format_and_copy_log {
      
-    local nowdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
+    local nowdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
     awk '{
         if(NR==1){
             if(NF==0){
@@ -310,7 +358,7 @@ function format_and_copy_log {
 }
 
 function separate_cwnd {
-    targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
+    targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
      awk '{
      target="cwnd*"
     if($11 ~ "cwnd="){
@@ -341,7 +389,7 @@ function separate_cwnd {
 }
 
 function get_app_meta {
-    targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
+    targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
     local app_i
     awk '{
         if($5 ~ "meta="){
@@ -408,7 +456,7 @@ function get_app_meta {
 }
 
 function extract_cwnd_each_flow {
-    targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
+    targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
     local app_i 
     for app_i in `seq ${app}` 
     do
@@ -456,7 +504,7 @@ function extract_cwnd_each_flow {
 }
 
 function count_mptcp_state {
-    local targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
+    local targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
     local app_i
     local subflow_i
     local var
@@ -521,7 +569,7 @@ function create_plt_file {
     echo "set ylabel \"${targetname}\"" >> ${targetdir}/${targetname}.plt
     echo "set xtics $scale" >> ${targetdir}/${targetname}.plt
     echo "set xrange [0:${duration}]" >> ${targetdir}/${targetname}.plt
-    echo "set output \"${targetname}_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png\"" >> ${targetdir}/${targetname}.plt
+    echo "set output \"${targetname}_${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png\"" >> ${targetdir}/${targetname}.plt
 
     echo -n "plot " >> ${targetdir}/${targetname}.plt
 
@@ -546,7 +594,7 @@ function create_plt_file {
 }
 
 function create_graph_img {
-    local targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
+    local targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
     local img_file
     local var
 
@@ -555,7 +603,7 @@ function create_graph_img {
         create_plt_file $var
         cd ${targetdir}
         gnuplot $var.plt 2>/dev/null
-        img_file=${var}_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png 
+        img_file=${var}_${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png 
         ln -s  ../../${targetdir}/${img_file} ../../tex/img/
 
         cd ../../
@@ -566,7 +614,7 @@ function create_graph_img {
 function create_each_tex_file {
     local targetname=$1
     local tex_name=tex/${cgn_ctrl_var}_${targetname}_${rootdir}.tex
-    local img_name=${targetname}_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png
+    local img_name=${targetname}_${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png
 
     if [ $# -ne 1 ]; then
         echo "create_plt_file:argument error"
@@ -578,13 +626,13 @@ function create_each_tex_file {
     echo "\begin{center}" >> ${tex_name}
     echo '\includegraphics[width=95mm]' >> ${tex_name}
     echo "{img/${img_name}}" >> ${tex_name} 
-    echo "\caption{${targetname} ${cgn_ctrl_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms LOSS=${loss_var}\% queue=${queue_var}pkt ${repeat_i}回目}" >> ${tex_name} 
+    echo "\caption{${targetname} ${cgn_ctrl_var} ext=${extended_var} LOSS=${loss_var}\% RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms queue=${queue_var}pkt ${repeat_i}回目}" >> ${tex_name} 
     echo '\end{center}
     \end{figure}' >>${tex_name} 
 }
 
 function create_tex_file {
-    targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
+    targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
 
     local var
 
@@ -611,7 +659,7 @@ function set_yrange_max {
 function create_throughput_time_graph_plt {
     local app_i
     local yrangemax
-    local targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
+    local targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
     local pltfile=${targetdir}/${repeat_i}th/throughput/plot.plt
     
     yrangemax=$(set_yrange_max)
@@ -623,6 +671,7 @@ function create_throughput_time_graph_plt {
     set key outside
     set size ratio 0.5
     set boxwidth 0.5 relative 
+    set termoption noenhanced
     set datafile separator " " ' > ${pltfile}
     echo "set title \"throughput ${targetdir} ${repeat_i}th\"" >> ${pltfile}
     echo "set yrange [0:${yrangemax}]" >> ${pltfile}
@@ -640,29 +689,29 @@ function create_throughput_time_graph_plt {
 }
 
 function create_throughput_time_tex {
-    local targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
+    local targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
     local tex_name=tex/${cgn_ctrl_var}_throughput_time_${rootdir}.tex
-    local img_name=throughput_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png
+    local img_name=throughput_${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png
 
     echo "\begin{figure}[htbp]" >> ${tex_name}
     echo "\begin{center}" >> ${tex_name}
     echo '\includegraphics[width=95mm]' >> ${tex_name}
     echo "{img/${img_name}}" >> ${tex_name} 
-    echo "\caption{throguhput ${cgn_ctrl_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms LOSS=${loss_var}\% queue=${queue_var}pkt ${repeat_i}回目}" >> ${tex_name} 
+    echo "\caption{throguhput ${cgn_ctrl_var} ext=${extended_var} LOSS=${loss_var}\% RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms queue=${queue_var}pkt ${repeat_i}回目}" >> ${tex_name} 
     echo '\end{center}
     \end{figure}' >>${tex_name} 
 
 }
 
 function create_throughput_time_graph {
-    local targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
+    local targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
     local img_file
 
     create_throughput_time_graph_plt
 
     cd ${targetdir}/${repeat_i}th/throughput
     gnuplot plot.plt 2>/dev/null
-    img_file=throughput_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png
+    img_file=throughput_${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png
     ln -s  ../../${targetdir}/${repeat_i}th/throughput/${img_file} ../../../tex/img/
     cd ../../../
 
@@ -716,10 +765,10 @@ function process_throguhput_data_queue {
     local targetdir
     local throguhput
 
-    targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
+    targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
     throughput=$(cat ${targetdir}/throughput/app${app_i}_.dat)
 
-    targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}/${repeat_i}th
+    targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}/${repeat_i}th
     echo "${queue_var} ${throughput}" >> ./${targetdir}/app${app_i}.dat
 
 }
@@ -728,18 +777,28 @@ function process_throughput_data_rtt {
     local targetdir
     local throguhput
 
-    targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
+    targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
     throughput=$(cat ${targetdir}/throughput/app${app_i}_.dat)
 
-    targetdir=${cgn_ctrl_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
+    targetdir=${cgn_ctrl_var}_ext=${extended_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
     echo "${rtt1_var} ${throughput}" >> ./${targetdir}/app${app_i}.dat
   
 }
 
+function process_throughput_data_ext {
+    local targetdir
+    local throguhput
 
+    targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
+    throughput=$(cat ${targetdir}/throughput/app${app_i}_.dat)
+
+    targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
+    echo "${extended_var} ${throughput}" >> ./${targetdir}/app${app_i}.dat
+  
+}
 
 function process_throughput_data {
-    local targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
+    local targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
     local app_i
 
     for app_i in `seq ${app}` 
@@ -757,6 +816,8 @@ function process_throughput_data {
         process_throguhput_data_queue
 
         process_throughput_data_rtt
+        
+        process_throughput_data_ext
     done
 }
 
@@ -766,30 +827,44 @@ function process_throughput_data_rtt_ave {
 
     for app_i in `seq ${app}` 
     do
-        targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
+        targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
         throughput=$(cat ${targetdir}/ave/throughput/app${app_i}_ave.dat)
-        targetdir=${cgn_ctrl_var}_loss=${loss_var}_queue=${queue_var}
+        targetdir=${cgn_ctrl_var}_ext=${extended_var}_loss=${loss_var}_queue=${queue_var}
         echo "${queue_var} ${throughput}" >> ./${targetdir}/ave/app${app_i}.dat
     done
 
 }
 
 function process_throughput_data_queue_ave {
-    local targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
+    local targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
     local throguhput
 
     for app_i in `seq ${app}` 
     do
-        targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
+        targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
         throughput=$(cat ${targetdir}/ave/throughput/app${app_i}_ave.dat)
-        targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
+        targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
+        echo "${queue_var} ${throughput}" >> ./${targetdir}/ave/app${app_i}.dat
+    done
+
+}
+
+function process_throughput_data_ext_ave {
+    local targetdir
+    local throguhput
+
+    for app_i in `seq ${app}` 
+    do
+        targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
+        throughput=$(cat ${targetdir}/ave/throughput/app${app_i}_ave.dat)
+        targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
         echo "${queue_var} ${throughput}" >> ./${targetdir}/ave/app${app_i}.dat
     done
 
 }
 
 function process_throughput_data_ave {
-    targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
+    targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
     local app_i
     local repeat_i
 
@@ -807,6 +882,7 @@ function process_throughput_data_ave {
     
     process_throughput_data_queue_ave
     process_throughput_data_rtt_ave
+    process_throughput_data_ext_ave
 }
 
 
@@ -818,7 +894,7 @@ function create_throughput_queue_graph_plt {
 
     yrangemax=$(set_yrange_max)
 
-    targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
+    targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
     
     for repeat_i in `seq ${repeat}` 
     do
@@ -918,7 +994,7 @@ function create_throughput_queue_graph_plt {
 }
 
 function create_throughput_queue_graph {
-    local targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
+    local targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
     local img_file
     create_throughput_queue_graph_plt
 
@@ -926,21 +1002,21 @@ function create_throughput_queue_graph {
     do
         cd ${targetdir}/${repeat_i}th
         gnuplot plot.plt 2>/dev/null
-        img_file=throughput_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_${repeat_i}th.png
+        img_file=throughput_${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_${repeat_i}th.png
         ln -s  ../../${targetdir}/${repeat_i}th/${img_file} ../../tex/img/
         cd ../..
     done
 
     cd ${targetdir}/ave
     gnuplot plot.plt 2>/dev/null
-    img_file=throughput_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_ave.png
+    img_file=throughput_${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_ave.png
     ln -s  ../../${targetdir}/ave/${img_file} ../../tex/img/
 
     cd ../..
 }
 
 function create_throughput_queue_tex {
-    local targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
+    local targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
     local repeat_i
     local tex_file_name=${cgn_ctrl_var}_throughput_queue_${rootdir}
     
@@ -952,8 +1028,8 @@ function create_throughput_queue_tex {
         echo "\begin{figure}[htbp]" >> ${tex_file_name}.tex
         echo "\begin{center}" >> ${tex_file_name}.tex
         echo '\includegraphics[width=95mm]' >> ${tex_file_name}.tex
-        echo "{img/throughput_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_${repeat_i}th.png}" >> ${tex_file_name}.tex
-        echo "\caption{${cgn_ctrl_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms LOSS=${loss_var}\% ${repeat_i}回目}" >> ${tex_file_name}.tex
+        echo "{img/throughput_${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_${repeat_i}th.png}" >> ${tex_file_name}.tex
+        echo "\caption{${cgn_ctrl_var} ext=${extended_var} LOSS=${loss_var}\% RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms ${repeat_i}回目}" >> ${tex_file_name}.tex
         echo '\end{center}
         \end{figure}' >> ${tex_file_name}.tex
     done
@@ -963,8 +1039,8 @@ function create_throughput_queue_tex {
     echo "\begin{figure}[htbp]" >> ${tex_file_name}_ave.tex
     echo "\begin{center}" >> ${tex_file_name}_ave.tex
     echo '\includegraphics[width=95mm]' >> ${tex_file_name}_ave.tex
-    echo "{img/throughput_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_ave.png}" >> ${tex_file_name}_ave.tex
-    echo "\caption{${cgn_ctrl_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms LOSS=${loss_var}\% ${repeat_i}回平均}" >> ${tex_file_name}_ave.tex
+    echo "{img/throughput_${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_ave.png}" >> ${tex_file_name}_ave.tex
+    echo "\caption{${cgn_ctrl_var} ext=${extended_var} LOSS=${loss_var}\% RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms ${repeat_i}回平均}" >> ${tex_file_name}_ave.tex
     echo '\end{center}
     \end{figure}' >> ${tex_file_name}_ave.tex
 
@@ -973,7 +1049,7 @@ function create_throughput_queue_tex {
 
 function create_all_each_graph_tex {
     local targetname=$1
-    local img_name=${targetname}_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png
+    local img_name=${targetname}_${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png
 
     echo "\begin{figurehere}" >> ${tex_name}
     echo "\begin{center}" >> ${tex_name}
@@ -987,8 +1063,9 @@ function create_all_each_graph_tex {
 
 function create_all_graph_tex {
     local tex_name=tex/${cgn_ctrl_var}_alldata_${rootdir}.tex
-
-    echo "\begin{center}${cgn_ctrl_var} LOSS=${loss_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms queue=${queue_var}pkt ${repeat_i}th \end{center}" >> ${tex_name} 
+    
+    echo "\\" >> ${tex_name} 
+    echo "\begin{center}${cgn_ctrl_var} ext=${extended_var} LOSS=${loss_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms queue=${queue_var}pkt ${repeat_i}th \end{center}" >> ${tex_name} 
     echo "\begin{multicols}{2}" >> ${tex_name}
 
     create_all_each_graph_tex "throughput"
@@ -1010,7 +1087,7 @@ function create_throughput_rtt_graph_plt {
 
     for repeat_i in `seq ${repeat}` 
     do
-        targetdir=${cgn_ctrl_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
+        targetdir=${cgn_ctrl_var}_ext=${extended_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
         for app_i in `seq ${app}` 
         do
             if [ $app_i -eq 1 ]; then
@@ -1040,7 +1117,7 @@ function create_throughput_rtt_graph_plt {
         set datafile separator " " ' > ./${targetdir}/plot.plt
         echo "set title \"throughput ${targetdir} ${repeat_i}th\"" >> ./${targetdir}/plot.plt 
         echo "set yrange [0:${yrangemax}]" >> ./${targetdir}/plot.plt
-        echo "set output \"throughput_${cgn_ctrl_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png\"" >> ./${targetdir}/plot.plt
+        echo "set output \"throughput_${cgn_ctrl_var}_ext=${extended_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png\"" >> ./${targetdir}/plot.plt
 
         echo -n "plot " >> ./${targetdir}/plot.plt
 
@@ -1059,7 +1136,7 @@ function create_throughput_rtt_graph_plt {
     done
     # -------- ave --------
 
-    targetdir=${cgn_ctrl_var}_loss=${loss_var}_queue=${queue_var}
+    targetdir=${cgn_ctrl_var}_ext=${extended_var}_loss=${loss_var}_queue=${queue_var}
 
     
     for app_i in `seq ${app}` 
@@ -1118,25 +1195,25 @@ function create_throughput_rtt_graph_gnuplot {
 
     for repeat_i in `seq ${repeat}` 
     do
-        targetdir=${cgn_ctrl_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
+        targetdir=${cgn_ctrl_var}_ext=${extended_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
         cd ${targetdir}
         gnuplot plot.plt 2>/dev/null
-        img_file=throughput_${cgn_ctrl_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png
+        img_file=throughput_${cgn_ctrl_var}_ext=${extended_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png
         ln -s  ../../${targetdir}/${img_file} ../../tex/img/
         cd ../..
     done
 
-    targetdir=${cgn_ctrl_var}_loss=${loss_var}_queue=${queue_var}/ave
+    targetdir=${cgn_ctrl_var}_ext=${extended_var}_loss=${loss_var}_queue=${queue_var}/ave
     cd ${targetdir}
     gnuplot plot.plt 2>/dev/null
-    img_file=throughput_${cgn_ctrl_var}_loss=${loss_var}_queue=${queue_var}_ave.png
+    img_file=throughput_${cgn_ctrl_var}_ext=${extended_var}_loss=${loss_var}_queue=${queue_var}_ave.png
     ln -s  ../../${targetdir}/${img_file} ../../tex/img/
     cd ../..
 
 }     
 
 function create_throughput_rtt_graph_tex {
-    local targetdir=${cgn_ctrl_var}_loss=${loss_var}_queue=${queue_var}
+    local targetdir=${cgn_ctrl_var}_ext=${extended_var}_loss=${loss_var}_queue=${queue_var}
     local repeat_i
     local tex_file_name=${cgn_ctrl_var}_throughput_rtt_${rootdir}
     
@@ -1147,8 +1224,8 @@ function create_throughput_rtt_graph_tex {
         echo "\begin{figure}[htbp]" >> ${tex_file_name}.tex
         echo "\begin{center}" >> ${tex_file_name}.tex
         echo '\includegraphics[width=95mm]' >> ${tex_file_name}.tex
-        echo "{img/throughput_${cgn_ctrl_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png}" >> ${tex_file_name}.tex
-        echo "\caption{${cgn_ctrl_var} LOSS=${loss_var}\% queue=${queue_var}pkt ${repeat_i}回目}" >> ${tex_file_name}.tex
+        echo "{img/throughput_${cgn_ctrl_var}_ext=${extended_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png}" >> ${tex_file_name}.tex
+        echo "\caption{${cgn_ctrl_var} ext=${extended_var} LOSS=${loss_var}\% queue=${queue_var}pkt ${repeat_i}回目}" >> ${tex_file_name}.tex
         echo '\end{center}
         \end{figure}' >> ${tex_file_name}.tex
     done
@@ -1158,8 +1235,8 @@ function create_throughput_rtt_graph_tex {
     echo "\begin{figure}[htbp]" >> ${tex_file_name}_ave.tex
     echo "\begin{center}" >> ${tex_file_name}_ave.tex
     echo '\includegraphics[width=95mm]' >> ${tex_file_name}_ave.tex
-    echo "{img/throughput_${cgn_ctrl_var}_loss=${loss_var}_queue=${queue_var}_ave.png}" >> ${tex_file_name}_ave.tex
-    echo "\caption{${cgn_ctrl_var} LOSS=${loss_var}\% queue=${queue_var}pkt ${repeat_i}回平均}" >> ${tex_file_name}_ave.tex
+    echo "{img/throughput_${cgn_ctrl_var}_ext=${extended_var}_loss=${loss_var}_queue=${queue_var}_ave.png}" >> ${tex_file_name}_ave.tex
+    echo "\caption{${cgn_ctrl_var} ext=${extended_var} LOSS=${loss_var}\% queue=${queue_var}pkt ${repeat_i}回平均}" >> ${tex_file_name}_ave.tex
     echo '\end{center}
     \end{figure}' >> ${tex_file_name}_ave.tex
 
@@ -1167,8 +1244,204 @@ function create_throughput_rtt_graph_tex {
 
 }
 
+
 function create_throughput_rtt_graph {
     local cgn_ctrl_var
+    local extended_var
+    local loss_var
+    local rtt1_var
+    local rtt2_var
+    local queue_var
+    local repeat_i
+
+    for cgn_ctrl_var in "${cgn_ctrl[@]}" 
+    do
+        for extended_var in "${extended_parameter[@]}" 
+        do
+            for loss_var in "${loss[@]}"
+            do
+                for queue_var in "${queue[@]}"
+                do
+                    create_throughput_rtt_graph_plt
+                    create_throughput_rtt_graph_gnuplot        
+                    create_throughput_rtt_graph_tex
+                done
+            done
+        done
+    done
+}
+
+function create_throughput_ext_graph_plt {
+    local targetdir
+    local yrangemax
+    local repeat_i
+
+    yrangemax=$(set_yrange_max)
+
+    for repeat_i in `seq ${repeat}` 
+    do
+        targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
+        for app_i in `seq ${app}` 
+        do
+            if [ $app_i -eq 1 ]; then
+                cp ./${targetdir}/app${app_i}.dat ./${targetdir}/graphdata.dat
+            else
+                join ./${targetdir}/graphdata.dat ./${targetdir}/app${app_i}.dat > ${targetdir}/tmp.dat
+                mv ${targetdir}/tmp.dat ./${targetdir}/graphdata.dat
+            fi
+        done
+
+        awk '{
+            total=0
+            for (i = 2;i <= NF;i++){
+                total += $i;
+            }
+            printf("%s %f\n",$0,total)
+
+        }' ./${targetdir}/graphdata.dat > ./${targetdir}/graphdata_total.dat
+
+        echo 'set terminal emf enhanced "Arial, 24"
+        set terminal png size 960,720
+        set ylabel "throughput"
+        set key outside
+        set size ratio 0.5
+        set termoption noenhanced
+        set boxwidth 0.5 relative 
+        set datafile separator " " ' > ./${targetdir}/plot.plt
+        echo "set title \"throughput ${targetdir} ${repeat_i}th\"" >> ./${targetdir}/plot.plt 
+        echo "set xlabel \"${extended_parameter_name}\"" >> ./${targetdir}/plot.plt 
+        echo "set yrange [0:${yrangemax}]" >> ./${targetdir}/plot.plt
+        echo "set output \"throughput_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png\"" >> ./${targetdir}/plot.plt
+
+        echo -n "plot " >> ./${targetdir}/plot.plt
+
+        for app_i in `seq ${app}` 
+        do
+            n=`expr $app_i + 1`
+            echo -n "\"./graphdata_total.dat\" using $n:xtic(1) with linespoints linewidth 2 title \"APP${app_i}\" " >> ./${targetdir}/plot.plt
+            if [ $app_i != $app ];then
+
+                echo -n " , " >> ./${targetdir}/plot.plt
+            else
+                 n=`expr $n + 1`
+                 echo -n " , \"./graphdata_total.dat\" using $n:xtic(1) with linespoints linewidth 4 title \"Total\" " >> ./${targetdir}/plot.plt
+            fi
+        done
+    done
+    # -------- ave --------
+
+    targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
+
+    
+    for app_i in `seq ${app}` 
+    do
+        if [ $app_i -eq 1 ]; then
+            cp ./${targetdir}/ave/app${app_i}.dat ./${targetdir}/ave/graphdata.dat
+        else
+            join ./${targetdir}/ave/graphdata.dat ./${targetdir}/ave/app${app_i}.dat > ${targetdir}/ave/tmp.dat
+            mv ${targetdir}/ave/tmp.dat ./${targetdir}/ave/graphdata.dat
+        fi
+    done
+
+    awk '{
+    total=0
+    for (i = 2;i <= NF;i++){
+        total += $i;
+    }
+    printf("%s %f\n",$0,total)
+
+    }' ./${targetdir}/ave/graphdata.dat > ./${targetdir}/ave/graphdata_total.dat
+
+    echo 'set terminal emf enhanced "Arial, 24"
+    set terminal png size 960,720
+    set ylabel "throughput"
+    set termoption noenhanced
+    set key outside
+    set size ratio 0.5
+    set boxwidth 0.5 relative 
+    set datafile separator " " ' > ./${targetdir}/ave/plot.plt
+    echo "set title \"throughput ${targetdir} ${repeat_i} times average \"" >> ./${targetdir}/ave/plot.plt 
+    echo "set xlabel \"${extended_parameter_name}\"" >> ./${targetdir}/ave/plot.plt 
+    echo "set yrange [0:${yrangemax}]" >> ./${targetdir}/ave/plot.plt
+    echo "set output \"throughput_${targetdir}_ave.png\"" >> ./${targetdir}/ave/plot.plt
+
+    echo -n "plot " >> ./${targetdir}/ave/plot.plt
+
+    for app_i in `seq ${app}` 
+    do
+        n=`expr $app_i + 1`
+        echo -n "\"./graphdata_total.dat\" using $n:xtic(1) with linespoints linewidth 2 title \"APP${app_i}\" " >> ./${targetdir}/ave/plot.plt
+        if [ $app_i != $app ];then
+
+        echo -n " , " >> ./${targetdir}/ave/plot.plt
+        else
+         n=`expr $n + 1`
+         echo -n " , \"./graphdata_total.dat\" using $n:xtic(1) with linespoints linewidth 4 title \"Total\" " >> ./${targetdir}/ave/plot.plt
+        fi
+
+    done
+
+}
+
+function create_throughput_ext_graph_gnuplot {
+    local img_file
+    local targetdir
+    local repeat_i
+
+    for repeat_i in `seq ${repeat}` 
+    do
+        targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
+        cd ${targetdir}
+        gnuplot plot.plt 2>/dev/null
+        img_file=throughput_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png
+        ln -s  ../../${targetdir}/${img_file} ../../tex/img/
+        cd ../..
+    done
+
+    targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/ave
+    cd ${targetdir}
+    gnuplot plot.plt 2>/dev/null
+    img_file=throughput_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_ave.png
+    ln -s  ../../${targetdir}/${img_file} ../../tex/img/
+    cd ../..
+
+}
+
+function create_throughput_ext_graph_tex {
+    local targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
+    local repeat_i
+    local tex_file_name=${cgn_ctrl_var}_throughput_ext_${rootdir}
+    
+    cd tex
+
+    for repeat_i in `seq ${repeat}` 
+    do
+        echo "\begin{figure}[htbp]" >> ${tex_file_name}.tex
+        echo "\begin{center}" >> ${tex_file_name}.tex
+        echo '\includegraphics[width=95mm]' >> ${tex_file_name}.tex
+        echo "{img/throughput_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png}" >> ${tex_file_name}.tex
+        echo "\caption{${cgn_ctrl_var} LOSS=${loss_var}\% rtt1=${rtt1_var} rtt2=${rtt2_var} queue=${queue_var}pkt ${repeat_i}回目}" >> ${tex_file_name}.tex
+        echo '\end{center}
+        \end{figure}' >> ${tex_file_name}.tex
+    done
+
+    #---------------------ave-------------------------
+
+    echo "\begin{figure}[htbp]" >> ${tex_file_name}_ave.tex
+    echo "\begin{center}" >> ${tex_file_name}_ave.tex
+    echo '\includegraphics[width=95mm]' >> ${tex_file_name}_ave.tex
+    echo "{img/throughput_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_ave.png}" >> ${tex_file_name}_ave.tex
+    echo "\caption{${cgn_ctrl_var} LOSS=${loss_var}\% rtt1=${rtt1_var} rtt2=${rtt2_var} queue=${queue_var}pkt ${repeat_i}回平均}" >> ${tex_file_name}_ave.tex
+    echo '\end{center}
+    \end{figure}' >> ${tex_file_name}_ave.tex
+
+    cd ..
+
+}
+
+function create_throughput_ext_graph {
+    local cgn_ctrl_var
+    local extended_var
     local loss_var
     local rtt1_var
     local rtt2_var
@@ -1179,67 +1452,76 @@ function create_throughput_rtt_graph {
     do
         for loss_var in "${loss[@]}"
         do
-            for queue_var in "${queue[@]}"
+            for rtt1_var in "${rtt1[@]}"
             do
-                create_throughput_rtt_graph_plt
-                create_throughput_rtt_graph_gnuplot        
-                create_throughput_rtt_graph_tex
+                for rtt2_var in "${rtt2[@]}"
+                do 
+                    for queue_var in "${queue[@]}"
+                    do
+                        create_throughput_ext_graph_plt
+                        create_throughput_ext_graph_gnuplot        
+                        create_throughput_ext_graph_tex
+                    done
+                done
             done
         done
     done
 }
 
-
-
 function process_log_data {
     local cgn_ctrl_var  
+    local extended_var
     local rtt1_var  
     local rtt2_var  
     local queue_var  
     local repeat_i 
     local targetdir
     local app_meta=()
-    local total_count=`echo "scale=1; ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} * $repeat " | bc`
+    local total_count=`echo "scale=1; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} * $repeat " | bc`
     local current_count=0
 
     for cgn_ctrl_var in "${cgn_ctrl[@]}" 
     do
-        for loss_var in "${loss[@]}"
+        for extended_var in "${extended_parameter[@]}" 
         do
-            for rtt1_var in "${rtt1[@]}"
+            for loss_var in "${loss[@]}"
             do
-                for rtt2_var in "${rtt2[@]}"
+                for rtt1_var in "${rtt1[@]}"
                 do
-                    if [ ${rtt1_var} != ${rtt2_var} ] ; then
-                        continue
-                    fi
-                    for queue_var in "${queue[@]}"
+                    for rtt2_var in "${rtt2[@]}"
                     do
-                        for repeat_i in `seq ${repeat}` 
+                        if [ ${rtt1_var} != ${rtt2_var} ] ; then
+                            continue
+                        fi
+                        for queue_var in "${queue[@]}"
                         do
-                            percent=`echo "scale=3; $current_count / $total_count * 100 " | bc`
-                            percent=`echo "scale=1; $percent / 1 " | bc`
-                            echo -ne "processing data ...${percent}% (${current_count} / ${total_count})\r"
-                            separate_cwnd
-                            get_app_meta
-                            extract_cwnd_each_flow
-                            count_mptcp_state
-                            create_graph_img
-                            create_tex_file
-                            process_throughput_data
-                            create_throughput_time_graph
-                            create_throughput_time_tex
-                            create_all_graph_tex
-                            (( current_count++))
-                        done
-                        process_throughput_data_ave
-                    done    
-                    create_throughput_queue_graph
-                    create_throughput_queue_tex
+                            for repeat_i in `seq ${repeat}` 
+                            do
+                                percent=`echo "scale=3; $current_count / $total_count * 100 " | bc`
+                                percent=`echo "scale=1; $percent / 1 " | bc`
+                                echo -ne "processing data ...${percent}% (${current_count} / ${total_count})\r"
+                                separate_cwnd
+                                get_app_meta
+                                extract_cwnd_each_flow
+                                count_mptcp_state
+                                create_graph_img
+                                create_tex_file
+                                process_throughput_data
+                                create_throughput_time_graph
+                                create_throughput_time_tex
+                                create_all_graph_tex
+                                (( current_count++))
+                            done
+                            process_throughput_data_ave
+                        done    
+                        create_throughput_queue_graph
+                        create_throughput_queue_tex
+                    done
                 done
             done
         done
     done
+    create_throughput_ext_graph
     create_throughput_rtt_graph
     echo "processing data ...done                                    "
 }
@@ -1283,6 +1565,10 @@ function build_tex_to_pdf {
         platex_dvipdfmx_link ${cgn_ctrl_var}_throughput_time_${rootdir}
 
         platex_dvipdfmx_link ${cgn_ctrl_var}_alldata_${rootdir}
+
+        platex_dvipdfmx_link ${cgn_ctrl_var}_throughput_ext_${rootdir}
+        
+        platex_dvipdfmx_link ${cgn_ctrl_var}_throughput_ext_${rootdir}_ave
 
         rm -f ${cgn_ctrl_var}*.log
         rm -f ${cgn_ctrl_var}*.dvi
@@ -1386,6 +1672,13 @@ function join_header_and_tex_file {
         tex_file_name=${cgn_ctrl_var}_alldata_${rootdir}
         create_tex_header "Alldata"
         join_header ${tex_file_name}
+
+        tex_file_name=${cgn_ctrl_var}_throughput_ext_${rootdir}
+        create_tex_header "Throughput ext"
+        join_header ${tex_file_name}
+        create_tex_header "Throughput ext ${repeat} repeat"
+        join_header ${tex_file_name}_ave
+
     done
     
     cd ..
@@ -1448,7 +1741,7 @@ function change_graph_xrange {
                     do
                         for repeat_i in `seq ${repeat}` 
                         do
-                            targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
+                            targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
                             echo -n "$targetdir ..."                           
 				cd $targetdir
                             awk -v startpoint=${start_point} -v endpoint=${end_point} -v scale=${scale} '{
@@ -1526,7 +1819,7 @@ function change_graph_yrange {
                 do
                     for repeat_i in `seq ${repeat}` 
                     do
-                        targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}/${repeat_i}th
+                        targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}/${repeat_i}th
                         echo -n "$targetdir ..."                           
                         cd $targetdir
                         awk -v startpoint=${start_point} -v endpoint=${end_point} -v scale=${scale} '{
@@ -1556,7 +1849,7 @@ function change_graph_yrange {
             do
                 for repeat_i in `seq ${repeat}` 
                 do
-                    targetdir=${cgn_ctrl_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
+                    targetdir=${cgn_ctrl_var}_ext=${extended_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
                     echo -n "$targetdir ..."                           
                     cd $targetdir
                     awk -v startpoint=${start_point} -v endpoint=${end_point} -v scale=${scale} '{
