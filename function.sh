@@ -224,6 +224,9 @@ function make_directory {
         do
             for rtt2_var in "${rtt2[@]}"
             do
+                if [ ${rtt1_var} != ${rtt2_var} ] ; then
+                    continue
+                fi
                 for loss_var in "${loss[@]}"
                 do
                     for queue_var in "${queue[@]}"
@@ -1469,6 +1472,9 @@ function create_throughput_ext_graph {
             do
                 for rtt2_var in "${rtt2[@]}"
                 do 
+                    if [ ${rtt1_var} != ${rtt2_var} ] ; then
+                        continue
+                    fi
                     for queue_var in "${queue[@]}"
                     do
                         create_throughput_ext_graph_plt
