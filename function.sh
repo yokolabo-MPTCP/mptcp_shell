@@ -267,6 +267,7 @@ function echo_finish_time {
 function echo_data_byte {
     local byte
     local one_data
+    local result
 
     if [ ${mptcp_ver} == "sptcp" ]; then
         one_data=0.0188 # sptcp 一回の実験に必要なデータ量 [GB]  
@@ -275,7 +276,14 @@ function echo_data_byte {
     fi
 
     byte=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} *${one_data} * $repeat " | bc`
-    echo "予想使用データ量 ${byte} GB"
+    result=`echo "scale=5; ${byte} < 1 " | bc`
+    if [ ${result} = "1" ]; then
+        
+        byte=`echo "scale=2; ${byte} * 1000 " | bc`
+        echo "予想使用データ量 ${byte} MB"
+    else
+        echo "予想使用データ量 ${byte} GB"
+    fi
 }
     
 function set_netem_rtt_and_loss {
