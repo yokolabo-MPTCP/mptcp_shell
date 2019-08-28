@@ -255,7 +255,7 @@ function echo_finish_time {
     if [ ${mptcp_ver} == "sptcp" ]; then
         process_time=70 # sptcp 一回の実験に必要なデータ処理時間 [s]  
     else
-        process_time=135 # mptcp 一回の実験に必要なデータ処理時間 [s] 
+        process_time=205 # mptcp 一回の実験に必要なデータ処理時間 [s] 
     fi
 
     time=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} * ($duration+${process_time}) * $repeat " | bc`
@@ -272,7 +272,7 @@ function echo_data_byte {
     if [ ${mptcp_ver} == "sptcp" ]; then
         one_data=0.0188 # sptcp 一回の実験に必要なデータ量 [GB]  
     else
-        one_data=3.8 # mptcp 一回の実験に必要なデータ量 [GB] 
+        one_data=0.0434 # mptcp 一回の実験に必要なデータ量 [GB] 
     fi
 
     byte=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} *${one_data} * $repeat " | bc`
@@ -280,9 +280,9 @@ function echo_data_byte {
     if [ ${result} = "1" ]; then
         
         byte=`echo "scale=2; ${byte} * 1000 " | bc`
-        echo "予想使用データ量 ${byte} MB"
+        echo "予想データ量 ${byte} MB"
     else
-        echo "予想使用データ量 ${byte} GB"
+        echo "予想データ量 ${byte} GB"
     fi
 }
     
