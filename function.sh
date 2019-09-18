@@ -288,10 +288,6 @@ function echo_data_byte {
 }
     
 function set_netem_rtt_and_loss {
-    local D1_eth0=eth0
-    local D1_eth1=eth1
-    local D2_eth0=eth0    
-    local D2_eth1=eth1   
 
     local delay_harf1=`echo "scale=3; $rtt1_var / 2 " | bc`
     local delay_harf2=`echo "scale=3; $rtt2_var / 2 " | bc`
