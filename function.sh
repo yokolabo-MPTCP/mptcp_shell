@@ -1906,36 +1906,39 @@ function change_graph_xrange {
     scale=`echo "scale=5; (${end_point} - ${start_point}) / 5.0" | bc`
     for cgn_ctrl_var in "${cgn_ctrl[@]}" 
     do
-        for rtt1_var in "${rtt1[@]}"
+        for extended_var in "${extended_parameter[@]}" 
         do
-            for rtt2_var in "${rtt2[@]}"
+            for rtt1_var in "${rtt1[@]}"
             do
-                if [ ${rtt1_var} != ${rtt2_var} ] ; then
-                    continue
-                fi
-                for loss_var in "${loss[@]}"
+                for rtt2_var in "${rtt2[@]}"
                 do
-                    for queue_var in "${queue[@]}"
+                    if [ ${rtt1_var} != ${rtt2_var} ] ; then
+                        continue
+                    fi
+                    for loss_var in "${loss[@]}"
                     do
-                        for repeat_i in `seq ${repeat}` 
+                        for queue_var in "${queue[@]}"
                         do
-                            targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
-                            echo -n "$targetdir ..."                           
-				cd $targetdir
-                            awk -v startpoint=${start_point} -v endpoint=${end_point} -v scale=${scale} '{
-                                if($2~"xrange"){
-                                    printf("set xrange [%s:%s]\n",startpoint,endpoint) 
-                                }else if ($2 ~ "xtics"){
-                                    printf("set xtics %s\n",scale) 
-                                }else{
-                                    print
-                                }
-                            }' ${targetname}.plt > ${targetname}_xrange[${start_point},${end_point}].plt
-                            gnuplot ${targetname}_xrange[${start_point},${end_point}].plt 2>/dev/null
-                            echo "done"
-                            cd ../..
-                        done
-                    done    
+                            for repeat_i in `seq ${repeat}` 
+                            do
+                                targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
+                                echo -n "$targetdir ..."                           
+                    cd $targetdir
+                                awk -v startpoint=${start_point} -v endpoint=${end_point} -v scale=${scale} '{
+                                    if($2~"xrange"){
+                                        printf("set xrange [%s:%s]\n",startpoint,endpoint) 
+                                    }else if ($2 ~ "xtics"){
+                                        printf("set xtics %s\n",scale) 
+                                    }else{
+                                        print
+                                    }
+                                }' ${targetname}.plt > ${targetname}_xrange[${start_point},${end_point}].plt
+                                gnuplot ${targetname}_xrange[${start_point},${end_point}].plt 2>/dev/null
+                                echo "done"
+                                cd ../..
+                            done
+                        done    
+                    done
                 done
             done
         done
@@ -1986,9 +1989,44 @@ function change_graph_yrange {
 
     for cgn_ctrl_var in "${cgn_ctrl[@]}" 
     do
-        for rtt1_var in "${rtt1[@]}"
+        for extended_var in "${extended_parameter[@]}" 
         do
-            for rtt2_var in "${rtt2[@]}"
+            for rtt1_var in "${rtt1[@]}"
+            do
+                for rtt2_var in "${rtt2[@]}"
+                do
+                    if [ ${rtt1_var} != ${rtt2_var} ] ; then
+                        continue
+                    fi
+                    for loss_var in "${loss[@]}"
+                    do
+                        for repeat_i in `seq ${repeat}` 
+                        do
+                            targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}/${repeat_i}th
+                            echo -n "$targetdir ..."                           
+                            cd $targetdir
+                            awk -v startpoint=${start_point} -v endpoint=${end_point} -v scale=${scale} '{
+                                if($2~"yrange"){
+                                    printf("set yrange [%s:%s]\n",startpoint,endpoint) 
+                                }else{
+                                    print
+                                }
+                            }' ${targetname}.plt > ${targetname}_yrange[${start_point},${end_point}].plt
+                            gnuplot ${targetname}_yrange[${start_point},${end_point}].plt 2>/dev/null
+                            echo "done"
+                            cd ../..
+                        done
+                    done
+                done
+            done
+        done
+    done
+
+    for cgn_ctrl_var in "${cgn_ctrl[@]}" 
+    do
+        for extended_var in "${extended_parameter[@]}" 
+        do
+            for queue_var in "${queue[@]}"
             do
                 if [ ${rtt1_var} != ${rtt2_var} ] ; then
                     continue
@@ -1997,7 +2035,7 @@ function change_graph_yrange {
                 do
                     for repeat_i in `seq ${repeat}` 
                     do
-                        targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}/${repeat_i}th
+                        targetdir=${cgn_ctrl_var}_ext=${extended_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
                         echo -n "$targetdir ..."                           
                         cd $targetdir
                         awk -v startpoint=${start_point} -v endpoint=${end_point} -v scale=${scale} '{
@@ -2011,35 +2049,6 @@ function change_graph_yrange {
                         echo "done"
                         cd ../..
                     done
-                done
-            done
-        done
-    done
-
-    for cgn_ctrl_var in "${cgn_ctrl[@]}" 
-    do
-        for queue_var in "${queue[@]}"
-        do
-            if [ ${rtt1_var} != ${rtt2_var} ] ; then
-                continue
-            fi
-            for loss_var in "${loss[@]}"
-            do
-                for repeat_i in `seq ${repeat}` 
-                do
-                    targetdir=${cgn_ctrl_var}_ext=${extended_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
-                    echo -n "$targetdir ..."                           
-                    cd $targetdir
-                    awk -v startpoint=${start_point} -v endpoint=${end_point} -v scale=${scale} '{
-                        if($2~"yrange"){
-                            printf("set yrange [%s:%s]\n",startpoint,endpoint) 
-                        }else{
-                            print
-                        }
-                    }' ${targetname}.plt > ${targetname}_yrange[${start_point},${end_point}].plt
-                    gnuplot ${targetname}_yrange[${start_point},${end_point}].plt 2>/dev/null
-                    echo "done"
-                    cd ../..
                 done
             done
         done
