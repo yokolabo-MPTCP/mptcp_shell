@@ -292,10 +292,10 @@ function set_netem_rtt_and_loss {
     local delay_harf1=`echo "scale=3; $rtt1_var / 2 " | bc`
     local delay_harf2=`echo "scale=3; $rtt2_var / 2 " | bc`
 
-    ssh -n root@${D1_ip} "tc qdisc change dev ${D1_eth0} root netem delay ${delay_harf1}ms loss 0% &&
-                         tc qdisc change dev ${D1_eth1} root netem delay ${delay_harf1}ms loss ${loss_var}%" 
-    ssh -n root@${D2_ip} "tc qdisc change dev ${D2_eth0} root netem delay ${delay_harf2}ms loss 0% &&
-                         tc qdisc change dev ${D2_eth1} root netem delay ${delay_harf2}ms loss ${loss_var}%"
+    ssh -n root@${D1_ip} "tc qdisc replace dev ${D1_eth0} root netem delay ${delay_harf1}ms loss 0% &&
+                         tc qdisc replace dev ${D1_eth1} root netem delay ${delay_harf1}ms loss ${loss_var}%" 
+    ssh -n root@${D2_ip} "tc qdisc replace dev ${D2_eth0} root netem delay ${delay_harf2}ms loss 0% &&
+                         tc qdisc replace dev ${D2_eth1} root netem delay ${delay_harf2}ms loss ${loss_var}%"
     
 }
 
