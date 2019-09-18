@@ -237,6 +237,7 @@ function make_directory {
                         for repeat_i in `seq ${repeat}` 
                         do
                             mkdir ${rootdir}/${targetdir}/${repeat_i}th
+                            mkdir ${rootdir}/${targetdir}/${repeat_i}th/srtt
                         done
                     done
                 done
@@ -1463,7 +1464,103 @@ function create_throughput_ext_graph_tex {
 
 }
 
-function create_throughput_ext_graph {
+function create_srtt_ext_graph_plt {
+    local targetdir
+    local pltdir
+    local yrangemax
+    local repeat_i
+
+
+    for extended_var in "${extended_parameter[@]}" 
+    do
+        for repeat_i in `seq ${repeat}` 
+        do
+            pltdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
+            for app_i in `seq ${app}` 
+            do
+                for subflow_i in `seq ${subflownum}` 
+                do
+                    targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th/log
+                    awk  -v subflow_i=$subflow_i -v extended_var=$extended_var ' {
+                        targetname="srtt"
+                        targetname2=targetname"*" 
+                        for(i=1;i<=NF;i++){
+                            if( match ($i, targetname2) == 1){
+                             printf("ext=%s_subflow%s %s\n",extended_var,subflow_i,$(i+1)/1000) 
+                                break
+                            }
+                            
+                        }
+                    }' ./${targetdir}/cwnd${app_i}_subflow${subflow_i}.dat >> $pltdir/srtt/srtt_boxplot.dat
+                done
+            done
+        done
+    done
+
+
+    targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th/srtt
+    for repeat_i in `seq ${repeat}` 
+    do
+        echo 'set terminal emf enhanced "Arial, 24"
+        set terminal png size 960,720
+        set ylabel "srtt [ms]"
+        set key off
+        set style boxplot fraction 1
+        set size ratio 0.5
+        set termoption noenhanced
+        set xtics rotate by -90
+        set boxwidth 0.5 relative 
+        set datafile separator " " ' > ./${targetdir}/plot.plt
+        echo "set title \"srtt ${targetdir} ${repeat_i}th\"" >> ./${targetdir}/plot.plt 
+        echo "set xlabel \"${extended_parameter_name}\"" >> ./${targetdir}/plot.plt 
+        echo "set output \"srtt_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png\"" >> ./${targetdir}/plot.plt
+
+        echo -n "plot " >> ./${targetdir}/plot.plt
+
+        echo -n "\"./srtt_boxplot.dat\" using (1.0):2:(0):1 with boxplot  " >> ./${targetdir}/plot.plt
+    done
+}
+
+function create_srtt_ext_graph_gnuplot {
+    local img_file
+    local targetdir
+    local repeat_i
+
+    for repeat_i in `seq ${repeat}` 
+    do
+        targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th/srtt
+        cd ${targetdir}
+        gnuplot plot.plt 2>/dev/null
+        img_file=srtt_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png
+        ln -s  ../../${targetdir}/${img_file} ../../../tex/img/
+        cd ../../..
+    done
+
+}
+
+function create_srtt_ext_graph_tex {
+    local targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
+    local repeat_i
+    local tex_file_name=${cgn_ctrl_var}_srtt_ext_${rootdir}
+    
+    cd tex
+
+    for repeat_i in `seq ${repeat}` 
+    do
+        echo "\begin{figure}[htbp]" >> ${tex_file_name}.tex
+        echo "\begin{center}" >> ${tex_file_name}.tex
+        echo '\includegraphics[width=95mm]' >> ${tex_file_name}.tex
+        echo "{img/srtt_${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png}" >> ${tex_file_name}.tex
+        echo "\caption{${cgn_ctrl_var} LOSS=${loss_var}\% rtt1=${rtt1_var} rtt2=${rtt2_var} queue=${queue_var}pkt ${repeat_i}回目}" >> ${tex_file_name}.tex
+        echo '\end{center}
+        \end{figure}' >> ${tex_file_name}.tex
+    done
+
+    cd ../
+}
+
+
+function create_ext_graph {
     local cgn_ctrl_var
     local extended_var
     local loss_var
@@ -1486,8 +1583,12 @@ function create_throughput_ext_graph {
                     for queue_var in "${queue[@]}"
                     do
                         create_throughput_ext_graph_plt
-                        create_throughput_ext_graph_gnuplot        
+                        create_throughput_ext_graph_gnuplot
                         create_throughput_ext_graph_tex
+
+                        create_srtt_ext_graph_plt
+                        create_srtt_ext_graph_gnuplot
+                        create_srtt_ext_graph_tex
                     done
                 done
             done
@@ -1537,7 +1638,6 @@ function process_log_data {
                                 create_throughput_time_graph
                                 create_throughput_time_tex
                                 create_all_graph_tex
-                                deleat_and_compress_processed_log_data
                                 (( current_count++))
                             done
                             process_throughput_data_ave
@@ -1549,18 +1649,53 @@ function process_log_data {
             done
         done
     done
-    create_throughput_ext_graph
+    create_ext_graph
     create_throughput_rtt_graph
+    deleat_and_compress_processed_log_data
     echo "processing data ...done                                    "
 }
 
 function deleat_and_compress_processed_log_data {
-    local targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th/log
-    cd ${targetdir}
-    tar cvzf kern.dat.tar.gz kern.dat > /dev/null 2>&1
+    local targetdir
+    local cgn_ctrl_var  
+    local extended_var
+    local rtt1_var  
+    local rtt2_var  
+    local queue_var  
+    local repeat_i 
 
-    rm -f *.dat 
-    cd ../../../
+    for cgn_ctrl_var in "${cgn_ctrl[@]}" 
+    do
+        for extended_var in "${extended_parameter[@]}" 
+        do
+            for loss_var in "${loss[@]}"
+            do
+                for rtt1_var in "${rtt1[@]}"
+                do
+                    for rtt2_var in "${rtt2[@]}"
+                    do
+                        if [ ${rtt1_var} != ${rtt2_var} ] ; then
+                            continue
+                        fi
+                        for queue_var in "${queue[@]}"
+                        do
+                            for repeat_i in `seq ${repeat}` 
+                            do
+                                targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th/log
+                                cd ${targetdir}
+                                tar cvzf kern.dat.tar.gz kern.dat > /dev/null 2>&1
+
+                                rm -f *.dat 
+                                cd ../../../
+
+                            done
+                        done    
+                    done
+                done
+            done
+        done
+    done
+ 
 }
 
 function platex_dvipdfmx_link {
@@ -1606,6 +1741,8 @@ function build_tex_to_pdf {
         platex_dvipdfmx_link ${cgn_ctrl_var}_throughput_ext_${rootdir}
         
         platex_dvipdfmx_link ${cgn_ctrl_var}_throughput_ext_${rootdir}_ave
+
+        platex_dvipdfmx_link ${cgn_ctrl_var}_srtt_ext_${rootdir}
 
         rm -f ${cgn_ctrl_var}*.log
         rm -f ${cgn_ctrl_var}*.dvi
@@ -1716,6 +1853,10 @@ function join_header_and_tex_file {
         create_tex_header "Throughput ext ${repeat} repeat"
         join_header ${tex_file_name}_ave
 
+        tex_file_name=${cgn_ctrl_var}_srtt_ext_${rootdir}
+        create_tex_header "srtt ext"
+        join_header ${tex_file_name}
+        
     done
     
     cd ..
