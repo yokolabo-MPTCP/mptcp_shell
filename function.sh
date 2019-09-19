@@ -1,5 +1,38 @@
 #!/bin/bash
 
+function nCr {          # 組み合わせ
+    local n=$1
+    local r=$2
+
+    local i
+    local numerator=1   #分子
+    local denominator=1 #分母
+    local result=1
+
+    for i in `seq $n -1 $((n-r+1))`
+    do
+        numerator=`echo "scale=1;$numerator * $i" | bc`
+    done
+
+    for i in `seq $r`
+    do
+        denominator=`echo "scale=1;$denominator * $i" | bc`
+    done
+
+    result=`echo "scale=1;$numerator / $denominator" | bc`
+
+    echo $result
+    
+}
+
+function nHr {      # 重複組合せ
+    local n=$1
+    local r=$2
+    local result
+    result=$(nCr `echo "scale=1;$n + $r - 1" | bc` $r)
+    echo $result
+}
+
 function usage_exit() {
 
     echo "Usage: $0 \"[memo of this exp.]\""
@@ -142,6 +175,23 @@ function check_network_available {
     echo " ok."
 }
 
+function check_rtt_combination {
+    if [ -v ${rtt_all_combination} ]; then      # tool.shで古い実験データを扱うときの互換性確保用
+        rtt_all_combination=0
+    fi
+    if [ ${rtt_all_combination} = 1 ]; then
+        if [ ${rtt1_var} -gt ${rtt2_var} ] ; then
+            return 1
+        fi
+    else
+        if [ ${rtt1_var} != ${rtt2_var} ] ; then
+            return 1
+        fi
+    fi
+
+    return 0
+}
+
 function make_directory {
     local extended_var
     local cgn_ctrl_var  
@@ -165,9 +215,7 @@ function make_directory {
             do
                 for rtt2_var in "${rtt2[@]}"
                 do
-                    if [ ${rtt1_var} != ${rtt2_var} ] ; then
-                        continue
-                    fi
+                    check_rtt_combination || continue 
                     for loss_var in "${loss[@]}"
                     do
                         targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
@@ -224,9 +272,7 @@ function make_directory {
         do
             for rtt2_var in "${rtt2[@]}"
             do
-                if [ ${rtt1_var} != ${rtt2_var} ] ; then
-                    continue
-                fi
+                check_rtt_combination || continue 
                 for loss_var in "${loss[@]}"
                 do
                     for queue_var in "${queue[@]}"
@@ -802,7 +848,7 @@ function process_throughput_data_rtt {
     throughput=$(cat ${targetdir}/throughput/app${app_i}_.dat)
 
     targetdir=${cgn_ctrl_var}_ext=${extended_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
-    echo "${rtt1_var} ${throughput}" >> ./${targetdir}/app${app_i}.dat
+    echo "${rtt1_var},${rtt2_var} ${throughput}" >> ./${targetdir}/app${app_i}.dat
   
 }
 
@@ -1573,9 +1619,7 @@ function create_ext_graph {
             do
                 for rtt2_var in "${rtt2[@]}"
                 do 
-                    if [ ${rtt1_var} != ${rtt2_var} ] ; then
-                        continue
-                    fi
+                    check_rtt_combination || continue 
                     for queue_var in "${queue[@]}"
                     do
                         create_throughput_ext_graph_plt
@@ -1592,6 +1636,18 @@ function create_ext_graph {
     done
 }
 
+function calc_combination_number_of_rtt {
+    local result
+
+    if [ ${rtt_all_combination} = 1 ]; then
+        result=$(nHr ${#rtt1[@]} 2)
+    else
+        result=${#rtt1[@]}
+    fi
+
+    echo $result
+}
+
 function process_log_data {
     local cgn_ctrl_var  
     local extended_var
@@ -1601,7 +1657,7 @@ function process_log_data {
     local repeat_i 
     local targetdir
     local app_meta=()
-    local total_count=`echo "scale=1; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} * $repeat " | bc`
+    local total_count=`echo "scale=1; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * $(calc_combination_number_of_rtt) * ${#loss[@]} * ${#queue[@]} * $repeat " | bc`
     local current_count=0
 
     for cgn_ctrl_var in "${cgn_ctrl[@]}" 
@@ -1614,9 +1670,7 @@ function process_log_data {
                 do
                     for rtt2_var in "${rtt2[@]}"
                     do
-                        if [ ${rtt1_var} != ${rtt2_var} ] ; then
-                            continue
-                        fi
+                        check_rtt_combination || continue 
                         for queue_var in "${queue[@]}"
                         do
                             for repeat_i in `seq ${repeat}` 
@@ -1670,9 +1724,7 @@ function deleat_and_compress_processed_log_data {
                 do
                     for rtt2_var in "${rtt2[@]}"
                     do
-                        if [ ${rtt1_var} != ${rtt2_var} ] ; then
-                            continue
-                        fi
+                        check_rtt_combination || continue 
                         for queue_var in "${queue[@]}"
                         do
                             for repeat_i in `seq ${repeat}` 
@@ -1908,9 +1960,7 @@ function change_graph_xrange {
             do
                 for rtt2_var in "${rtt2[@]}"
                 do
-                    if [ ${rtt1_var} != ${rtt2_var} ] ; then
-                        continue
-                    fi
+                    check_rtt_combination || continue 
                     for loss_var in "${loss[@]}"
                     do
                         for queue_var in "${queue[@]}"
@@ -1991,9 +2041,7 @@ function change_graph_yrange {
             do
                 for rtt2_var in "${rtt2[@]}"
                 do
-                    if [ ${rtt1_var} != ${rtt2_var} ] ; then
-                        continue
-                    fi
+                    check_rtt_combination || continue 
                     for loss_var in "${loss[@]}"
                     do
                         for repeat_i in `seq ${repeat}` 
@@ -2024,9 +2072,7 @@ function change_graph_yrange {
         do
             for queue_var in "${queue[@]}"
             do
-                if [ ${rtt1_var} != ${rtt2_var} ] ; then
-                    continue
-                fi
+                check_rtt_combination || continue 
                 for loss_var in "${loss[@]}"
                 do
                     for repeat_i in `seq ${repeat}` 
@@ -2075,9 +2121,7 @@ function decompression_and_reprocess_log_data {
                 do
                     for rtt2_var in "${rtt2[@]}"
                     do
-                        if [ ${rtt1_var} != ${rtt2_var} ] ; then
-                            continue
-                        fi
+                        check_rtt_combination || continue 
                         for queue_var in "${queue[@]}"
                         do
                             for repeat_i in `seq ${repeat}` 

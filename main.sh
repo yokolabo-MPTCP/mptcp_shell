@@ -50,12 +50,9 @@ do
             do
                 for rtt2_var in "${rtt2[@]}"
                 do
-                    
+                    check_rtt_combination || continue 
                     set_netem_rtt_and_loss
-                    if [ $rtt1_var != $rtt2_var ]; then
-                        continue
-                        
-                    fi	
+                    
                     for queue_var in "${queue[@]}"
                     do
                         set_txqueuelen
