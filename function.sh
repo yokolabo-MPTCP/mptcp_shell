@@ -897,7 +897,7 @@ function process_throughput_data_rtt_ave {
         targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
         throughput=$(cat ${targetdir}/ave/throughput/app${app_i}_ave.dat)
         targetdir=${cgn_ctrl_var}_ext=${extended_var}_loss=${loss_var}_queue=${queue_var}
-        echo "${queue_var} ${throughput}" >> ./${targetdir}/ave/app${app_i}.dat
+        echo "${rtt1_var},${rtt2_var} ${throughput}" >> ./${targetdir}/ave/app${app_i}.dat
     done
 
 }
@@ -925,7 +925,7 @@ function process_throughput_data_ext_ave {
         targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
         throughput=$(cat ${targetdir}/ave/throughput/app${app_i}_ave.dat)
         targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
-        echo "${queue_var} ${throughput}" >> ./${targetdir}/ave/app${app_i}.dat
+        echo "${extended_var} ${throughput}" >> ./${targetdir}/ave/app${app_i}.dat
     done
 
 }
@@ -1227,7 +1227,7 @@ function create_throughput_rtt_graph_plt {
 
     echo 'set terminal emf enhanced "Arial, 24"
     set terminal png size 960,720
-    set xlabel "queue"
+    set xlabel "RTT [ms]"
     set ylabel "throughput"
     set key outside
     set size ratio 0.5
