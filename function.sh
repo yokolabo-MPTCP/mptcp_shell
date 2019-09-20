@@ -589,10 +589,10 @@ function count_mptcp_state {
     done
     }
 
-function create_plt_file {
+function create_time_graph_plt {
+    local targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
     local app_i
     local subflow_i
-    local targetname=$1
     local targetpos
     local scale=`echo "scale=1; $duration / 5.0" | bc`
     local spacing 
@@ -600,11 +600,6 @@ function create_plt_file {
     local statecount
     local var
 
-    if [ $# -ne 1 ]; then
-        echo "create_plt_file:argument error"
-        exit 1
-    fi
-     
     gnuplotversion=$(gnuplot --version)
     gnuplotversion=$(echo ${gnuplotversion:8:1})
     if [ ${gnuplotversion} -eq 5 ]; then
@@ -614,8 +609,8 @@ function create_plt_file {
     fi
     spacing=$((${spacing} + ${#item_to_count_state[@]}))
 
-    targetpos=$(awk -v targetname=${targetname} '{
-        targetname2=targetname"*" 
+    targetpos=$(awk -v item_var=${item_var} '{
+        targetname2=item_var"*" 
         for(i=1;i<=NF;i++){
             if( match ($i, targetname2) == 1){
                 print i+1;
@@ -631,84 +626,103 @@ function create_plt_file {
     set key outside
     set size ratio 0.5
     set xlabel "time[s]"
-    set datafile separator " " ' > ${targetdir}/${targetname}.plt
-    echo "set key spacing ${spacing}" >> ${targetdir}/${targetname}.plt
-    echo "set ylabel \"${targetname}\"" >> ${targetdir}/${targetname}.plt
-    echo "set xtics $scale" >> ${targetdir}/${targetname}.plt
-    echo "set xrange [0:${duration}]" >> ${targetdir}/${targetname}.plt
-    echo "set output \"${targetname}_${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png\"" >> ${targetdir}/${targetname}.plt
+    set datafile separator " " ' > ${targetdir}/${item_var}.plt
+    echo "set key spacing ${spacing}" >> ${targetdir}/${item_var}.plt
+    echo "set ylabel \"${item_var}\"" >> ${targetdir}/${item_var}.plt
+    echo "set xtics $scale" >> ${targetdir}/${item_var}.plt
+    echo "set xrange [0:${duration}]" >> ${targetdir}/${item_var}.plt
+    echo "set output \"${item_var}_${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png\"" >> ${targetdir}/${item_var}.plt
 
-    echo -n "plot " >> ${targetdir}/${targetname}.plt
+    echo -n "plot " >> ${targetdir}/${item_var}.plt
 
     for app_i in `seq ${app}` 
     do
         for subflow_i in `seq ${subflownum}` 
         do
-            echo -n "\"./log/cwnd${app_i}_subflow${subflow_i}.dat\" using 1:${targetpos} with lines linewidth 2 title \"APP${app_i} : subflow${subflow_i} " >> ${targetdir}/${targetname}.plt
+            echo -n "\"./log/cwnd${app_i}_subflow${subflow_i}.dat\" using 1:${targetpos} with lines linewidth 2 title \"APP${app_i} : subflow${subflow_i} " >> ${targetdir}/${item_var}.plt
             for var in "${item_to_count_state[@]}" 
             do
                 statecount=$(awk 'NR==1' ./${targetdir}/log/cwnd${app_i}_subflow${subflow_i}_${var}.dat)
-                echo -n "\n ${var}=${statecount} " >> ${targetdir}/${targetname}.plt
+                echo -n "\n ${var}=${statecount} " >> ${targetdir}/${item_var}.plt
             done
-            echo -n "\" " >> ${targetdir}/${targetname}.plt
+            echo -n "\" " >> ${targetdir}/${item_var}.plt
             if [ $app_i != $app ] || [ $subflow_i != $subflownum ];then
 
-               echo -n " , " >> ${targetdir}/${targetname}.plt
+               echo -n " , " >> ${targetdir}/${item_var}.plt
                 
             fi
         done
     done
 }
 
-function create_graph_img {
+function create_time_graph {
+    local cgn_ctrl_var  
+    local extended_var
+    local rtt1_var  
+    local rtt2_var  
+    local queue_var  
+    local repeat_i 
+    local item_var
+
+    for cgn_ctrl_var in "${cgn_ctrl[@]}" 
+    do
+        for extended_var in "${extended_parameter[@]}" 
+        do
+            for loss_var in "${loss[@]}"
+            do
+                for rtt1_var in "${rtt1[@]}"
+                do
+                    for rtt2_var in "${rtt2[@]}"
+                    do
+                        check_rtt_combination || continue 
+                        for queue_var in "${queue[@]}"
+                        do
+                            for repeat_i in `seq ${repeat}` 
+                            do
+                                for item_var in "${item_to_create_graph[@]}" 
+                                do
+                                    create_time_graph_plt
+                                    create_time_graph_gnuplot
+                                    create_time_graph_tex
+                                done
+                                create_all_graph_tex
+
+                                create_throughput_time_graph_plt
+                                create_throughput_time_graph_gnuplot
+                                create_throughput_time_tex
+                            done
+                        done
+                    done
+                done
+            done
+        done
+    done
+}
+
+function create_time_graph_gnuplot {
     local targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
     local img_file
-    local var
 
-    for var in "${item_to_create_graph[@]}" 
-    do
-        create_plt_file $var
-        cd ${targetdir}
-        gnuplot $var.plt 2>/dev/null
-        img_file=${var}_${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png 
-        ln -s  ../../${targetdir}/${img_file} ../../tex/img/
+    cd ${targetdir}
+    gnuplot ${item_var}.plt 2>/dev/null
+    img_file=${item_var}_${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png 
+    ln -s  ../../${targetdir}/${img_file} ../../tex/img/
 
-        cd ../../
-    done
+    cd ../../
 
 }
 
-function create_each_tex_file {
-    local targetname=$1
-    local tex_name=tex/${cgn_ctrl_var}_${targetname}_${rootdir}.tex
-    local img_name=${targetname}_${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png
-
-    if [ $# -ne 1 ]; then
-        echo "create_plt_file:argument error"
-        exit 1
-    fi
-
+function create_time_graph_tex {
+    local tex_name=tex/${cgn_ctrl_var}_${item_var}_${rootdir}.tex
+    local img_name=${item_var}_${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png
     
     echo "\begin{figure}[htbp]" >> ${tex_name}
     echo "\begin{center}" >> ${tex_name}
     echo '\includegraphics[width=95mm]' >> ${tex_name}
     echo "{img/${img_name}}" >> ${tex_name} 
-    echo "\caption{${targetname} ${cgn_ctrl_var} ext=${extended_var} LOSS=${loss_var}\% RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms queue=${queue_var}pkt ${repeat_i}回目}" >> ${tex_name} 
+    echo "\caption{${item_var} ${cgn_ctrl_var} ext=${extended_var} LOSS=${loss_var}\% RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms queue=${queue_var}pkt ${repeat_i}回目}" >> ${tex_name} 
     echo '\end{center}
     \end{figure}' >>${tex_name} 
-}
-
-function create_tex_file {
-    targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
-
-    local var
-
-    for var in "${item_to_create_graph[@]}" 
-    do
-        create_each_tex_file $var
-    done
-
-
 }
 
 function set_yrange_max {
@@ -770,11 +784,9 @@ function create_throughput_time_tex {
 
 }
 
-function create_throughput_time_graph {
+function create_throughput_time_graph_gnuplot {
     local targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
     local img_file
-
-    create_throughput_time_graph_plt
 
     cd ${targetdir}/${repeat_i}th/throughput
     gnuplot plot.plt 2>/dev/null
@@ -1060,10 +1072,8 @@ function create_throughput_queue_graph_plt {
     done
 }
 
-function create_throughput_queue_graph {
-    local targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
-    local img_file
-    create_throughput_queue_graph_plt
+function create_throguhput_queue_graph_gnuplot {
+    local repeat_i
 
     for repeat_i in `seq ${repeat}` 
     do
@@ -1082,7 +1092,35 @@ function create_throughput_queue_graph {
     cd ../..
 }
 
-function create_throughput_queue_tex {
+function create_queue_graph {
+    local targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
+    local img_file
+
+    for cgn_ctrl_var in "${cgn_ctrl[@]}" 
+    do
+        for extended_var in "${extended_parameter[@]}" 
+        do
+            for loss_var in "${loss[@]}"
+            do
+                for rtt1_var in "${rtt1[@]}"
+                do
+                    for rtt2_var in "${rtt2[@]}"
+                    do
+                        check_rtt_combination || continue 
+
+                        create_throughput_queue_graph_plt
+                        create_throguhput_queue_graph_gnuplot
+                        create_throughput_queue_graph_tex
+                        
+                    done
+                done
+            done
+        done
+    done
+    
+}
+
+function create_throughput_queue_graph_tex {
     local targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
     local repeat_i
     local tex_file_name=${cgn_ctrl_var}_throughput_queue_${rootdir}
@@ -1312,7 +1350,7 @@ function create_throughput_rtt_graph_tex {
 }
 
 
-function create_throughput_rtt_graph {
+function create_rtt_graph {
     local cgn_ctrl_var
     local extended_var
     local loss_var
@@ -1682,25 +1720,20 @@ function process_log_data {
                                 get_app_meta
                                 extract_cwnd_each_flow
                                 count_mptcp_state
-                                create_graph_img
-                                create_tex_file
                                 process_throughput_data
-                                create_throughput_time_graph
-                                create_throughput_time_tex
-                                create_all_graph_tex
                                 (( current_count++))
                             done
                             process_throughput_data_ave
                         done    
-                        create_throughput_queue_graph
-                        create_throughput_queue_tex
                     done
                 done
             done
         done
     done
+    create_time_graph
     create_ext_graph
-    create_throughput_rtt_graph
+    create_queue_graph
+    create_rtt_graph
     deleat_and_compress_processed_log_data
     echo "processing data ...done                                    "
 }
@@ -1776,28 +1809,28 @@ function build_tex_to_pdf {
 
         platex_dvipdfmx_link ${cgn_ctrl_var}_throughput_queue_${rootdir} 
 
-        platex_dvipdfmx_link ${cgn_ctrl_var}_throughput_queue_${rootdir}_ave
-        
         platex_dvipdfmx_link ${cgn_ctrl_var}_throughput_rtt_${rootdir}
         
-        platex_dvipdfmx_link ${cgn_ctrl_var}_throughput_rtt_${rootdir}_ave
-
         platex_dvipdfmx_link ${cgn_ctrl_var}_throughput_time_${rootdir}
 
         platex_dvipdfmx_link ${cgn_ctrl_var}_alldata_${rootdir}
 
         platex_dvipdfmx_link ${cgn_ctrl_var}_throughput_ext_${rootdir}
         
-        platex_dvipdfmx_link ${cgn_ctrl_var}_throughput_ext_${rootdir}_ave
-
         platex_dvipdfmx_link ${cgn_ctrl_var}_srtt_ext_${rootdir}
+
+        if [ ${repeat} -ne 1 ]; then
+            platex_dvipdfmx_link ${cgn_ctrl_var}_throughput_queue_${rootdir}_ave
+            platex_dvipdfmx_link ${cgn_ctrl_var}_throughput_rtt_${rootdir}_ave
+            platex_dvipdfmx_link ${cgn_ctrl_var}_throughput_ext_${rootdir}_ave
+        fi
 
         rm -f ${cgn_ctrl_var}*.log
         rm -f ${cgn_ctrl_var}*.dvi
         rm -f ${cgn_ctrl_var}*.aux
     
-	echo "done"
     done
+	echo "done"
 
     cd ..
 }
