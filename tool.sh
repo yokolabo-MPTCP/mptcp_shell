@@ -36,7 +36,7 @@ fi
 check_exist_extended_parameter
 
 echo "Please select you want to do."
-select VAR in "Change graph x range" "Change graph y range" "Build tex" "decompression_and_reprocess_log_data" "exit"
+select VAR in "Change graph x range" "Change graph y range" "Build tex" "decompression_and_reprocess_log_data" "delete_and_compress_processed_log_data" "exit"
 do
     if [ "$VAR" = "Change graph x range" ];then
         change_graph_xrange
@@ -48,6 +48,9 @@ do
         break
     elif [ "$VAR" = "decompression_and_reprocess_log_data" ];then
         decompression_and_reprocess_log_data
+        break
+    elif [ "$VAR" = "delete_and_compress_processed_log_data" ];then
+        delete_and_compress_processed_log_data
         break
     elif [ "$VAR" = "exit" ];then
         exit

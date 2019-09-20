@@ -1553,6 +1553,35 @@ function create_throughput_ext_graph_tex {
 
 }
 
+function process_srtt_ext_boxplot_data {
+    local app_i
+    local subflow_i
+    local targetdir
+    local pltdir
+
+    pltdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
+    for app_i in `seq ${app}` 
+    do
+        for subflow_i in `seq ${subflownum}` 
+        do
+            targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th/log
+            awk  -v subflow_i=$subflow_i -v extended_var=$extended_var ' {
+                targetname="srtt"
+                targetname2=targetname"*" 
+                for(i=1;i<=NF;i++){
+                    if( match ($i, targetname2) == 1){
+                     printf("ext=%s_subflow%s %s\n",extended_var,subflow_i,$(i+1)/1000) 
+                        break
+                    }
+                    
+                }
+            }' ./${targetdir}/cwnd${app_i}_subflow${subflow_i}.dat >> $pltdir/srtt/srtt_boxplot.dat
+        done
+    done
+
+
+}
+
 function create_srtt_ext_graph_plt {
     local targetdir
     local pltdir
@@ -1560,36 +1589,9 @@ function create_srtt_ext_graph_plt {
     local repeat_i
 
 
-    for extended_var in "${extended_parameter[@]}" 
-    do
-        for repeat_i in `seq ${repeat}` 
-        do
-            pltdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
-            for app_i in `seq ${app}` 
-            do
-                for subflow_i in `seq ${subflownum}` 
-                do
-                    targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th/log
-                    awk  -v subflow_i=$subflow_i -v extended_var=$extended_var ' {
-                        targetname="srtt"
-                        targetname2=targetname"*" 
-                        for(i=1;i<=NF;i++){
-                            if( match ($i, targetname2) == 1){
-                             printf("ext=%s_subflow%s %s\n",extended_var,subflow_i,$(i+1)/1000) 
-                                break
-                            }
-                            
-                        }
-                    }' ./${targetdir}/cwnd${app_i}_subflow${subflow_i}.dat >> $pltdir/srtt/srtt_boxplot.dat
-                done
-            done
-        done
-    done
-
-
-    targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th/srtt
     for repeat_i in `seq ${repeat}` 
     do
+        targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th/srtt
         echo 'set terminal emf enhanced "Arial, 24"
         set terminal png size 960,720
         set ylabel "srtt [ms]"
@@ -1651,7 +1653,6 @@ function create_srtt_ext_graph_tex {
 
 function create_ext_graph_and_tex {
     local cgn_ctrl_var
-    local extended_var
     local loss_var
     local rtt1_var
     local rtt2_var
@@ -1753,12 +1754,13 @@ function process_log_data {
                             for repeat_i in `seq ${repeat}` 
                             do
                                 calc_remaining_time
-                                echo -ne "Processing data ...$(calc_progress_percent)% (${current_count} / ${total_count}) 残り${r_time}s\r"
+                                echo -ne "Processing data ...$(calc_progress_percent)% (${current_count} / ${total_count}) 残り${r_time}s     \r"
                                 separate_cwnd
                                 get_app_meta
                                 extract_cwnd_each_flow
                                 count_mptcp_state
                                 process_throughput_data
+                                process_srtt_ext_boxplot_data
                                 (( current_count++))
                             done
                             process_throughput_data_ave
@@ -1788,7 +1790,7 @@ function create_graph_and_tex {
     echo "Creating graph ...done (${current_count} / ${total_count})                       "
 }
 
-function deleat_and_compress_processed_log_data {
+function delete_and_compress_processed_log_data {
     local targetdir
     local cgn_ctrl_var  
     local extended_var
@@ -1796,8 +1798,11 @@ function deleat_and_compress_processed_log_data {
     local rtt2_var  
     local queue_var  
     local repeat_i 
-    local total_count=`echo "scale=1; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * $(calc_combination_number_of_rtt) * ${#loss[@]} * ${#queue[@]} * $repeat " | bc`
+    local total_count
     local current_count=0
+    
+    total_count=`echo "scale=1; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * $(calc_combination_number_of_rtt) * ${#loss[@]} * ${#queue[@]} * $repeat " | bc`
+    total_count=`echo "scale=1; ${total_count} + ${#cgn_ctrl[@]} * $(calc_combination_number_of_rtt) * ${#loss[@]} * ${#queue[@]} * $repeat " | bc`
 
     for cgn_ctrl_var in "${cgn_ctrl[@]}" 
     do
@@ -1814,7 +1819,7 @@ function deleat_and_compress_processed_log_data {
                         do
                             for repeat_i in `seq ${repeat}` 
                             do
-                                echo -ne "Deleat and compress data ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
+                                echo -ne "Delete and compress data ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
                                 targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th/log
                                 cd ${targetdir}
                                 tar cvzf kern.dat.tar.gz kern.dat > /dev/null 2>&1
@@ -1829,8 +1834,36 @@ function deleat_and_compress_processed_log_data {
             done
         done
     done
- 
-    echo "Deleat and compress data ...done (${current_count} / ${total_count})                       "
+
+    for cgn_ctrl_var in "${cgn_ctrl[@]}" 
+    do
+        for loss_var in "${loss[@]}"
+        do
+            for rtt1_var in "${rtt1[@]}"
+            do
+                for rtt2_var in "${rtt2[@]}"
+                do
+                    check_rtt_combination || continue 
+                    for queue_var in "${queue[@]}"
+                    do
+                        for repeat_i in `seq ${repeat}` 
+                        do
+                            echo -ne "Delete and compress data ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
+                            targetdir=${cgn_ctrl_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th/srtt
+                            cd ${targetdir}
+                            echo "容量削減のため削除されました。復元する場合はtool.shを使ってください。" >srtt_boxplot.dat
+                            echo "These were deleted for reducing data size." >>srtt_boxplot.dat
+                            echo "Please use tool.sh for recover boxplot data." >>srtt_boxplot.dat
+                            cd ../../../
+                            ((current_count++))
+
+                        done
+                    done
+                done
+            done
+        done
+    done
+    echo "Delete and compress data ...done (${current_count} / ${total_count})                       "
 }
 
 function platex_dvipdfmx_link {
@@ -2203,7 +2236,7 @@ function decompression_and_reprocess_log_data {
     local repeat_i 
     local targetdir
     local app_meta=()
-    local total_count=`echo "scale=1; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} * $repeat " | bc`
+    local total_count=`echo "scale=1; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * $(calc_combination_number_of_rtt) * ${#loss[@]} * ${#queue[@]} * $repeat " | bc`
     local current_count=0
 
     for cgn_ctrl_var in "${cgn_ctrl[@]}" 
@@ -2225,13 +2258,12 @@ function decompression_and_reprocess_log_data {
                                 cd ${targetdir}
                                 tar xzf kern.dat.tar.gz  > /dev/null 2>&1
                                 cd ../../../
-                                percent=`echo "scale=3; $current_count / $total_count * 100 " | bc`
-                                percent=`echo "scale=1; $percent / 1 " | bc`
-                                echo -ne "reprocessing data ...${percent}% (${current_count} / ${total_count})\r"
+                                echo -ne "Reprocessing data ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
                                 separate_cwnd
                                 get_app_meta
                                 extract_cwnd_each_flow
                                 count_mptcp_state
+                                process_srtt_ext_boxplot_data
                                 (( current_count++))
                             done
                         done    
@@ -2240,5 +2272,6 @@ function decompression_and_reprocess_log_data {
             done
         done
     done
-    echo "reprocessing data ...done                                    "
+    
+    echo "Reprocessing data ...done                                    "
 }
