@@ -302,7 +302,7 @@ function echo_finish_time {
     if [ ${mptcp_ver} == "sptcp" ]; then
         process_time=70 # sptcp 一回の実験に必要なデータ処理時間 [s]  
     else
-        process_time=205 # mptcp 一回の実験に必要なデータ処理時間 [s] 
+        process_time=227 # mptcp 一回の実験に必要なデータ処理時間 [s] 
     fi
 
     time=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} * ($duration+${process_time}) * $repeat " | bc`
@@ -655,7 +655,7 @@ function create_time_graph_plt {
     done
 }
 
-function create_time_graph {
+function create_time_graph_and_tex {
     local cgn_ctrl_var  
     local extended_var
     local rtt1_var  
@@ -679,6 +679,7 @@ function create_time_graph {
                         do
                             for repeat_i in `seq ${repeat}` 
                             do
+                                echo -ne "Creating graph ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
                                 for item_var in "${item_to_create_graph[@]}" 
                                 do
                                     create_time_graph_plt
@@ -690,6 +691,8 @@ function create_time_graph {
                                 create_throughput_time_graph_plt
                                 create_throughput_time_graph_gnuplot
                                 create_throughput_time_tex
+
+                                ((current_count++))
                             done
                         done
                     done
@@ -1092,7 +1095,7 @@ function create_throguhput_queue_graph_gnuplot {
     cd ../..
 }
 
-function create_queue_graph {
+function create_queue_graph_and_tex {
     local targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
     local img_file
 
@@ -1108,10 +1111,13 @@ function create_queue_graph {
                     do
                         check_rtt_combination || continue 
 
+                        echo -ne "Creating graph ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
+                        
                         create_throughput_queue_graph_plt
                         create_throguhput_queue_graph_gnuplot
                         create_throughput_queue_graph_tex
                         
+                        ((current_count++))
                     done
                 done
             done
@@ -1350,7 +1356,7 @@ function create_throughput_rtt_graph_tex {
 }
 
 
-function create_rtt_graph {
+function create_rtt_graph_and_tex {
     local cgn_ctrl_var
     local extended_var
     local loss_var
@@ -1367,9 +1373,12 @@ function create_rtt_graph {
             do
                 for queue_var in "${queue[@]}"
                 do
+                    echo -ne "Creating graph ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
+
                     create_throughput_rtt_graph_plt
                     create_throughput_rtt_graph_gnuplot        
                     create_throughput_rtt_graph_tex
+                    ((current_count++))
                 done
             done
         done
@@ -1640,7 +1649,7 @@ function create_srtt_ext_graph_tex {
 }
 
 
-function create_ext_graph {
+function create_ext_graph_and_tex {
     local cgn_ctrl_var
     local extended_var
     local loss_var
@@ -1660,6 +1669,8 @@ function create_ext_graph {
                     check_rtt_combination || continue 
                     for queue_var in "${queue[@]}"
                     do
+                        echo -ne "Creating graph ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
+
                         create_throughput_ext_graph_plt
                         create_throughput_ext_graph_gnuplot
                         create_throughput_ext_graph_tex
@@ -1667,6 +1678,7 @@ function create_ext_graph {
                         create_srtt_ext_graph_plt
                         create_srtt_ext_graph_gnuplot
                         create_srtt_ext_graph_tex
+                        ((current_count++))
                     done
                 done
             done
@@ -1686,6 +1698,30 @@ function calc_combination_number_of_rtt {
     echo $result
 }
 
+function calc_progress_percent {
+    local percent
+    percent=`echo "scale=3; $current_count / $total_count * 100 " | bc`
+    percent=`echo "scale=1; $percent / 1 " | bc`
+    echo $percent
+}
+
+function calc_remaining_time {
+    local r_count=`echo "scale=1; $total_count - $current_count " | bc`
+    local end_time
+
+    if [ $current_count -eq 0 ]; then
+        start_time=$(date +%s)
+        r_time="..."
+    elif [ $current_count -eq 1 ]; then
+        end_time=$(date +%s) 
+        one_time=`echo "scale=1; $end_time - $start_time " | bc`
+        r_time=`echo "scale=1; $one_time * $r_count " | bc`
+    else
+        r_time=`echo "scale=1; $one_time * $r_count " | bc`
+    fi
+    
+}
+
 function process_log_data {
     local cgn_ctrl_var  
     local extended_var
@@ -1695,6 +1731,71 @@ function process_log_data {
     local repeat_i 
     local targetdir
     local app_meta=()
+    local current_count=0
+    local total_count=`echo "scale=1; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * $(calc_combination_number_of_rtt) * ${#loss[@]} * ${#queue[@]} * $repeat " | bc`
+    local start_time
+    local one_time
+    local r_time
+
+    for cgn_ctrl_var in "${cgn_ctrl[@]}" 
+    do
+        for extended_var in "${extended_parameter[@]}" 
+        do
+            for loss_var in "${loss[@]}"
+            do
+                for rtt1_var in "${rtt1[@]}"
+                do
+                    for rtt2_var in "${rtt2[@]}"
+                    do
+                        check_rtt_combination || continue 
+                        for queue_var in "${queue[@]}"
+                        do
+                            for repeat_i in `seq ${repeat}` 
+                            do
+                                calc_remaining_time
+                                echo -ne "Processing data ...$(calc_progress_percent)% (${current_count} / ${total_count}) 残り${r_time}s\r"
+                                separate_cwnd
+                                get_app_meta
+                                extract_cwnd_each_flow
+                                count_mptcp_state
+                                process_throughput_data
+                                (( current_count++))
+                            done
+                            process_throughput_data_ave
+                        done    
+                    done
+                done
+            done
+        done
+    done
+    echo "Processing data ...done (${current_count} / ${total_count})                       "
+}
+
+function create_graph_and_tex {
+    local total_count
+    local current_count=0
+
+    total_count=`echo "scale=1; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * $(calc_combination_number_of_rtt) * ${#loss[@]} * ${#queue[@]} * $repeat " | bc`
+    total_count=`echo "scale=1; ${total_count} + ${#cgn_ctrl[@]} * $(calc_combination_number_of_rtt) * ${#loss[@]} * ${#queue[@]} " | bc`
+    total_count=`echo "scale=1; ${total_count} + ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * $(calc_combination_number_of_rtt) * ${#loss[@]}  " | bc`
+    total_count=`echo "scale=1; ${total_count} + ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#loss[@]} * ${#queue[@]}" | bc`
+
+    create_time_graph_and_tex
+    create_ext_graph_and_tex
+    create_queue_graph_and_tex
+    create_rtt_graph_and_tex
+
+    echo "Creating graph ...done (${current_count} / ${total_count})                       "
+}
+
+function deleat_and_compress_processed_log_data {
+    local targetdir
+    local cgn_ctrl_var  
+    local extended_var
+    local rtt1_var  
+    local rtt2_var  
+    local queue_var  
+    local repeat_i 
     local total_count=`echo "scale=1; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * $(calc_combination_number_of_rtt) * ${#loss[@]} * ${#queue[@]} * $repeat " | bc`
     local current_count=0
 
@@ -1713,62 +1814,14 @@ function process_log_data {
                         do
                             for repeat_i in `seq ${repeat}` 
                             do
-                                percent=`echo "scale=3; $current_count / $total_count * 100 " | bc`
-                                percent=`echo "scale=1; $percent / 1 " | bc`
-                                echo -ne "processing data ...${percent}% (${current_count} / ${total_count})\r"
-                                separate_cwnd
-                                get_app_meta
-                                extract_cwnd_each_flow
-                                count_mptcp_state
-                                process_throughput_data
-                                (( current_count++))
-                            done
-                            process_throughput_data_ave
-                        done    
-                    done
-                done
-            done
-        done
-    done
-    create_time_graph
-    create_ext_graph
-    create_queue_graph
-    create_rtt_graph
-    deleat_and_compress_processed_log_data
-    echo "processing data ...done                                    "
-}
-
-function deleat_and_compress_processed_log_data {
-    local targetdir
-    local cgn_ctrl_var  
-    local extended_var
-    local rtt1_var  
-    local rtt2_var  
-    local queue_var  
-    local repeat_i 
-
-    for cgn_ctrl_var in "${cgn_ctrl[@]}" 
-    do
-        for extended_var in "${extended_parameter[@]}" 
-        do
-            for loss_var in "${loss[@]}"
-            do
-                for rtt1_var in "${rtt1[@]}"
-                do
-                    for rtt2_var in "${rtt2[@]}"
-                    do
-                        check_rtt_combination || continue 
-                        for queue_var in "${queue[@]}"
-                        do
-                            for repeat_i in `seq ${repeat}` 
-                            do
+                                echo -ne "Deleat and compress data ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
                                 targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th/log
                                 cd ${targetdir}
                                 tar cvzf kern.dat.tar.gz kern.dat > /dev/null 2>&1
 
                                 rm -f *.dat 
                                 cd ../../../
-
+                                ((current_count++))
                             done
                         done    
                     done
@@ -1777,21 +1830,31 @@ function deleat_and_compress_processed_log_data {
         done
     done
  
+    echo "Deleat and compress data ...done (${current_count} / ${total_count})                       "
 }
 
 function platex_dvipdfmx_link {
     local tex_file_name=$1
 
+    echo -ne "Build tex file ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
     platex -halt-on-error -interaction=nonstopmode ${tex_file_name}.tex > /dev/null 2>&1
     dvipdfmx ${tex_file_name}.dvi > /dev/null 2>&1
     ln -sf tex/${tex_file_name}.pdf ../
-
+    ((current_count++))
 }
 
 
 function build_tex_to_pdf {
     local cgn_ctrl_var
     local item_ver
+    local total_count
+    local current_count=0
+
+    total_count=`echo "scale=1; ${#item_to_create_graph[@]} * ${#cgn_ctrl[@]} + 6 " | bc`
+    if [ ${repeat} -ne 1 ]; then
+        total_count=`echo "scale=1; ${total_count} + ${#cgn_ctrl[@]} * 3 " | bc`
+    fi
+
     cd tex 
 
     if !(type platex > /dev/null 2>&1); then
@@ -1799,7 +1862,6 @@ function build_tex_to_pdf {
        return 1
     fi
 
-    echo -n "Build tex file ..."
     for cgn_ctrl_var in "${cgn_ctrl[@]}" 
     do
         for item_var in "${item_to_create_graph[@]}" 
@@ -1830,7 +1892,7 @@ function build_tex_to_pdf {
         rm -f ${cgn_ctrl_var}*.aux
     
     done
-	echo "done"
+    echo "Build tex file ...done (${current_count} / ${total_count})                       "
 
     cd ..
 }

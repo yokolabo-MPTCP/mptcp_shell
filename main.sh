@@ -73,6 +73,8 @@ do
 	done
 done
 process_log_data
+create_graph_and_tex
+deleat_and_compress_processed_log_data
 join_header_and_tex_file
 build_tex_to_pdf
 
