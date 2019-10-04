@@ -355,6 +355,8 @@ function get_user_name_and_rewrite_config {
         }
     }' default.conf > out
     mv -f out default.conf
+
+    author=$username
 }
 
 function clean_log_sender_and_receiver {
