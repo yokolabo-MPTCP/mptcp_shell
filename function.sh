@@ -337,13 +337,18 @@ function set_netem_rtt_and_loss {
 
     local delay_harf1=`echo "scale=3; $rtt1_var / 2 " | bc`
     local delay_harf2=`echo "scale=3; $rtt2_var / 2 " | bc`
-
-    ssh -n root@${D1_ip} "tc qdisc replace dev ${D1_eth0} root netem delay ${delay_harf1}ms loss 0% &&
-                         tc qdisc replace dev ${D1_eth1} root netem delay ${delay_harf1}ms loss ${loss_var}%" 
-    ssh -n root@${D2_ip} "tc qdisc replace dev ${D2_eth0} root netem delay ${delay_harf2}ms loss 0% &&
-                         tc qdisc replace dev ${D2_eth1} root netem delay ${delay_harf2}ms loss ${loss_var}%"
-    
-}
+	if [ $loss_var == 0 ]; then
+			ssh -n root@${D1_ip} "tc qdisc replace dev ${D1_eth0} root netem delay ${delay_harf1}ms &&
+								 tc qdisc replace dev ${D1_eth1} root netem delay ${delay_harf1}ms" 
+			ssh -n root@${D2_ip} "tc qdisc replace dev ${D2_eth0} root netem delay ${delay_harf2}ms &&
+								 tc qdisc replace dev ${D2_eth1} root netem delay ${delay_harf2}ms"
+	else
+			ssh -n root@${D1_ip} "tc qdisc replace dev ${D1_eth0} root netem delay ${delay_harf1}ms &&
+								 tc qdisc replace dev ${D1_eth1} root netem delay ${delay_harf1}ms loss ${loss_var}%" 
+			ssh -n root@${D2_ip} "tc qdisc replace dev ${D2_eth0} root netem delay ${delay_harf2}ms &&
+								 tc qdisc replace dev ${D2_eth1} root netem delay ${delay_harf2}ms loss ${loss_var}%"
+	fi
+    }
 
 function get_user_name_and_rewrite_config {
     local username=$SUDO_USER
@@ -444,12 +449,17 @@ function separate_cwnd {
             printf("%s %s %s %s %s %s %s %s %s %s",$1,$4,$5,$7,$8,$10,$11,$16,$17,$18)
         }
 
-    }else if(match ($9, target)==1){
+    }else if(match ($7, target)==1){
         printf("%s ",$1)
-        for(i=5;i<=NF;i++){
+        for(i=3;i<=NF;i++){
             printf("%s ",$i)
         }
     
+    }else if(match ($8, target)==1){
+		printf("%s ",$1)
+        for(i=4;i<=NF;i++){
+            printf("%s ",$i)
+        }
     }else{
         next
     }
@@ -461,14 +471,14 @@ function get_app_meta {
     targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
     local app_i
     awk '{
-        if($5 ~ "meta="){
-            array[$6]++   
+        if($2 ~ "meta="){
+            array[$3]++   
         }
     }END{
         for(i in array){
             printf("%s %d\n",i,array[i])
         }    
-    }' ./${targetdir}/log/kern.dat > ./${targetdir}/log/app.dat
+    }' ./${targetdir}/log/cwnd.dat > ./${targetdir}/log/app.dat
 
     sort -k2nr ./${targetdir}/log/app.dat > ./${targetdir}/log/app_sort.dat
     mv ./${targetdir}/log/app_sort.dat ./${targetdir}/log/app.dat
