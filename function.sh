@@ -1,5 +1,391 @@
 #!/bin/bash
 
+function receive_all_data_pdf {
+    local sender_i
+    local target_ip
+    for sender_i in `seq ${sender_num}` 
+    do
+        target_ip="sender${sender_i}_ip"
+        scp root@${!target_ip}:${senderdir}/${rootdir}/tex/*.pdf ./sender${sender_i}
+
+    done
+
+
+}
+function copy_slave_throughput {
+    local target_ip
+    local sender_i
+    local app_i
+
+    for sender_i in `seq ${sender_num}` 
+    do
+        for app_i in `seq ${app}` 
+        do
+            target_ip="sender${sender_i}_ip"
+            targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th/throughput
+            targetmasterdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th/throughput
+            scp root@${!target_ip}:${senderdir}/${rootdir}/${targetdir}/app${app_i}_.dat ./${targetmasterdir}/sender${sender_i}_app${app_i}.dat > /dev/null &
+        done
+    done
+    wait
+}
+
+function copy_slave_throughput_ave {
+    local target_ip
+    local sender_i
+    local app_i
+
+    for sender_i in `seq ${sender_num}` 
+    do
+        for app_i in `seq ${app}` 
+        do
+            target_ip="sender${sender_i}_ip"
+            targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/ave/throughput
+            targetmasterdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/ave/throughput
+            scp root@${!target_ip}:${senderdir}/${rootdir}/${targetdir}/app${app_i}_ave.dat ./${targetmasterdir}/sender${sender_i}_app${app_i}_ave.dat > /dev/null &
+        done
+    done
+    wait
+
+}
+
+function process_throughput_master {
+    local cgn_ctrl_var  
+    local extended_var
+    local rtt1_var  
+    local rtt2_var  
+    local queue_var  
+    local repeat_i 
+    local targetdir
+    local targetmasterdir
+    local app_meta=()
+    local current_count=0
+    local start_time
+    local one_time
+    local r_time
+
+    for cgn_ctrl_var in "${cgn_ctrl[@]}" 
+    do
+        for extended_var in "${extended_parameter[@]}" 
+        do
+            for loss_var in "${loss[@]}"
+            do
+                for rtt1_var in "${rtt1[@]}"
+                do
+                    for rtt2_var in "${rtt2[@]}"
+                    do
+                        check_rtt_combination || continue 
+                        for queue_var in "${queue[@]}"
+                        do
+                            for repeat_i in `seq ${repeat}` 
+                            do
+                                copy_slave_throughput
+                                copy_throughput_queue
+                            done
+                            copy_slave_throughput_ave
+                            copy_throughput_queue_ave
+                        done    
+                    done
+                done
+            done
+        done
+    done
+}
+
+function copy_throughput_queue {
+    local target_ip
+    local sender_i
+    local app_i
+    local throughput
+
+    for sender_i in `seq ${sender_num}` 
+    do
+        for app_i in `seq ${app}` 
+        do
+            targetmasterdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th/throughput
+            throughput=$(cat ${targetmasterdir}/sender${sender_i}_app${app_i}.dat)
+            targetmasterdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}/${repeat_i}th
+            echo "${queue_var} ${throughput}" >> ${targetmasterdir}/sender${sender_i}_app${app_i}.dat
+        done
+    done
+}
+
+function copy_throughput_queue_ave {
+    local target_ip
+    local sender_i
+    local app_i
+    local throughputave
+
+    for sender_i in `seq ${sender_num}` 
+    do
+        for app_i in `seq ${app}` 
+        do
+            targetmasterdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/ave/throughput
+            throughputave=$(cat ${targetmasterdir}/sender${sender_i}_app${app_i}_ave.dat)
+            targetmasterdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}/ave
+            echo "${queue_var} ${throughputave}" >> ${targetmasterdir}/sender${sender_i}_app${app_i}.dat
+        done
+    done
+
+}
+function create_graph_and_tex_master {
+    create_queue_graph_and_tex_master 
+}
+
+function create_throughput_queue_graph_plt_master {
+    local repeat_i 
+    local app_i
+    local queue_var
+    local yrangemax
+    local sender_i
+
+    yrangemax=$(set_yrange_max)
+
+    targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
+    
+    for repeat_i in `seq ${repeat}` 
+    do
+        for sender_i in `seq ${sender_num}` 
+        do
+            for app_i in `seq ${app}` 
+            do
+                if [ $app_i -eq 1 -a ${sender_i} -eq 1 ]; then
+                    cp ./${targetdir}/${repeat_i}th/sender${sender_i}_app${app_i}.dat ./${targetdir}/${repeat_i}th/graphdata.dat
+                else
+                    join ./${targetdir}/${repeat_i}th/graphdata.dat ./${targetdir}/${repeat_i}th/sender${sender_i}_app${app_i}.dat > ${targetdir}/${repeat_i}th/tmp.dat
+                    mv ${targetdir}/${repeat_i}th/tmp.dat ./${targetdir}/${repeat_i}th/graphdata.dat
+                fi
+            done
+        done
+        awk '{
+            total=0
+            for (i = 2;i <= NF;i++){
+                total += $i;
+            }
+            printf("%s %f\n",$0,total)
+
+        }' ./${targetdir}/${repeat_i}th/graphdata.dat > ./${targetdir}/${repeat_i}th/graphdata_total.dat
+
+        echo 'set terminal emf enhanced "Arial, 24"
+        set terminal png size 960,720
+        set xlabel "queue"
+        set ylabel "throughput"
+        set key outside
+        set size ratio 0.5
+        set boxwidth 0.5 relative 
+        set termoption noenhanced
+        set datafile separator " " ' > ./${targetdir}/${repeat_i}th/plot.plt
+        echo "set title \"throughput ${targetdir} ${repeat_i}th\"" >> ./${targetdir}/${repeat_i}th/plot.plt 
+        echo "set yrange [0:${yrangemax}]" >> ./${targetdir}/${repeat_i}th/plot.plt
+        echo "set output \"throughput_${targetdir}_${repeat_i}th.png\"" >> ./${targetdir}/${repeat_i}th/plot.plt
+
+        echo -n "plot " >> ./${targetdir}/${repeat_i}th/plot.plt
+        n=1
+        for sender_i in `seq ${sender_num}` 
+        do
+            for app_i in `seq ${app}` 
+            do
+                n=`expr $n + 1`
+                echo -n "\"./graphdata_total.dat\" using $n:xtic(1) with linespoints linewidth 2 title \"Sender${sender_i}_APP${app_i}\" " >> ./${targetdir}/${repeat_i}th/plot.plt
+                if [ $app_i != $app ];then
+                    echo -n " , " >> ./${targetdir}/${repeat_i}th/plot.plt
+                fi
+
+
+            done
+            if [ $sender_i != $sender_num ];then
+
+                echo -n " , " >> ./${targetdir}/${repeat_i}th/plot.plt
+            else
+                 n=`expr $n + 1`
+                 echo -n " , \"./graphdata_total.dat\" using $n:xtic(1) with linespoints linewidth 4 title \"Total\" " >> ./${targetdir}/${repeat_i}th/plot.plt
+            fi
+        done
+    done 
+
+    for sender_i in `seq ${sender_num}` 
+    do
+        for app_i in `seq ${app}` 
+        do
+            if [ $app_i -eq 1 -a $sender_i -eq 1 ]; then
+                cp ./${targetdir}/ave/sender${sender_i}_app${app_i}.dat ./${targetdir}/ave/graphdata.dat
+            else
+                join ./${targetdir}/ave/graphdata.dat ./${targetdir}/ave/sender${sender_i}_app${app_i}.dat > ${targetdir}/ave/tmp.dat
+                mv ${targetdir}/ave/tmp.dat ./${targetdir}/ave/graphdata.dat
+            fi
+        done
+    done
+
+    awk '{
+    total=0
+    for (i = 2;i <= NF;i++){
+        total += $i;
+    }
+    printf("%s %f\n",$0,total)
+
+    }' ./${targetdir}/ave/graphdata.dat > ./${targetdir}/ave/graphdata_total.dat
+
+    echo 'set terminal emf enhanced "Arial, 24"
+    set terminal png size 960,720
+    set xlabel "queue"
+    set ylabel "throughput"
+    set key outside
+    set size ratio 0.5
+    set boxwidth 0.5 relative 
+    set termoption noenhanced
+    set datafile separator " " ' > ./${targetdir}/ave/plot.plt
+    echo "set title \"throughput ${targetdir} ${repeat_i} times average \"" >> ./${targetdir}/ave/plot.plt 
+    echo "set yrange [0:${yrangemax}]" >> ./${targetdir}/ave/plot.plt
+    echo "set output \"throughput_${targetdir}_ave.png\"" >> ./${targetdir}/ave/plot.plt
+
+    echo -n "plot " >> ./${targetdir}/ave/plot.plt
+
+
+    for sender_i in `seq ${sender_num}` 
+    do
+        for app_i in `seq ${app}` 
+        do
+            n=`echo "scale=1; ($sender_i - 1) * 2 + $app_i + 1 " | bc`
+            echo -n "\"./graphdata_total.dat\" using $n:xtic(1) with linespoints linewidth 2 title \"Sender${sender_i}_APP${app_i}\" " >> ./${targetdir}/ave/plot.plt
+            if [ $app_i != $app ];then
+                echo -n " , " >> ./${targetdir}/ave/plot.plt
+            fi
+
+
+        done
+        if [ $sender_i != $sender_num ];then
+
+            echo -n " , " >> ./${targetdir}/ave/plot.plt
+        else
+             n=`expr $n + 1`
+             echo -n " , \"./graphdata_total.dat\" using $n:xtic(1) with linespoints linewidth 4 title \"Total\" " >> ./${targetdir}/ave/plot.plt
+        fi
+    done
+}
+
+
+function create_throguhput_queue_graph_gnuplot_master {
+    echo "deguchi"
+}
+
+function create_queue_graph_and_tex_master {
+    local cgn_ctrl_var
+    local extended_var
+    local loss_var
+    local rtt1_var
+    local rtt2_var
+    local targetdir
+    local img_file
+
+    for cgn_ctrl_var in "${cgn_ctrl[@]}" 
+    do
+        for extended_var in "${extended_parameter[@]}" 
+        do
+            for loss_var in "${loss[@]}"
+            do
+                for rtt1_var in "${rtt1[@]}"
+                do
+                    for rtt2_var in "${rtt2[@]}"
+                    do
+                        check_rtt_combination || continue 
+                        targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
+
+                        #echo -ne "Creating graph ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
+                        
+                        create_throughput_queue_graph_plt_master
+                        create_throguhput_queue_graph_gnuplot
+                        create_throughput_queue_graph_tex
+                        
+                        #((current_count++))
+                    done
+                done
+            done
+        done
+    done
+
+}
+
+function create_graph_and_tex_master {
+
+    create_queue_graph_and_tex_master
+}
+
+function send_command {
+    local send_command=$1
+    local bg_option
+    local sender_i
+    local target_ip
+
+    if [ $# -eq 2 ]; then
+        bg_option=1
+    else
+        bg_option=0
+    fi
+
+    for sender_i in `seq ${sender_num}` 
+    do
+        target_ip="sender${sender_i}_ip"
+        if [ ${bg_option} -eq 1 ];then
+            ssh root@${!target_ip} "${senderdir}/slave.sh ${send_command}" &
+        else
+            ssh root@${!target_ip} "${senderdir}/slave.sh ${send_command}"
+        fi
+    done
+    if [ ${bg_option} -eq 1 ];then
+        #echo -n "waiting..."
+        wait
+        #echo "done"
+    fi
+}
+
+function write_and_send_now_parameter {
+    local sender_i
+    local target_ip
+
+    echo "cgn_ctrl_var=${cgn_ctrl_var}">now_parameter.txt
+    echo "extended_var=${extended_var}">>now_parameter.txt
+    echo "rtt1_var=${rtt1_var}">>now_parameter.txt
+    echo "rtt2_var=${rtt2_var}">>now_parameter.txt
+    echo "loss_var=${loss_var}">>now_parameter.txt
+    echo "queue_var=${queue_var}">>now_parameter.txt
+    echo "repeat_i=${repeat_i}">>now_parameter.txt
+    
+
+
+    for sender_i in `seq ${sender_num}` 
+    do
+        target_ip="sender${sender_i}_ip"
+        scp ./now_parameter.txt root@${!target_ip}:/${senderdir}/now_parameter.txt > /dev/null &
+    done
+
+    wait
+
+}
+
+function sender_set_netem {
+
+    ssh root@192.168.255.1 "${senderdir}/slave.sh "set_netem ${rtt1_var} ${rtt2_var} ${loss_var}""
+}
+
+function init_sender {
+    local sender_i
+
+    for sender_i in `seq ${sender_num}` 
+    do
+        
+        target_ip="sender${sender_i}_ip"
+        scp ./slave.sh root@${!target_ip}:${senderdir} & 
+        scp ./function.sh root@${!target_ip}:${senderdir} & 
+        scp ./${configfile} root@${!target_ip}:${senderdir}/default.conf &
+        ssh root@${!target_ip} "echo "rootdir=${rootdir}">${senderdir}/rootdir.txt && echo "today=${today}">>${senderdir}/rootdir.txt && echo "memo=${memo}">>${senderdir}/rootdir.txt" &
+        mes="source ${senderdir}/default.conf && echo \"rcvkernel=\$(ssh root@\${receiver_ip} 'uname -r')\">>${senderdir}/rootdir.txt " 
+        ssh root@${!target_ip} "$mes" 
+        #ssh root@${!target_ip} "${senderdir}/slave.sh "make_directory""
+
+    done
+    wait
+}
+
 function nCr {          # 組み合わせ
     local n=$1
     local r=$2
@@ -111,6 +497,44 @@ function check_sysctl_error {
     exit	
 }
 
+function get_mptcp_version_sender1 {
+    local kernel=$(ssh root@${sender1_ip} "uname -r")
+    if [[ $kernel == *3.5.7* ]]; then
+        mptcp_ver=0.86
+    elif [[ $kernel == *3.1.0* ]]; then
+        mptcp_ver=0.87
+    elif [[ $kernel == *3.1.1* ]]; then
+        mptcp_ver=0.88
+    elif [[ $kernel == *3.14.* ]]; then
+        mptcp_ver=0.89
+    elif [[ $kernel == *3.18.* ]]; then
+        mptcp_ver=0.90
+    elif [[ $kernel == *4.1.* ]]; then
+        mptcp_ver=0.91
+    elif [[ $kernel == *4.4.* ]]; then
+        mptcp_ver=0.92
+    elif [[ $kernel == *4.9.* ]]; then
+        mptcp_ver=0.93
+    elif [[ $kernel == *4.14.* ]]; then
+        mptcp_ver=0.94
+    elif [[ $kernel == *4.19.* ]]; then
+        mptcp_ver=0.95
+    elif [[ $kernel == *vbox* ]]; then
+        mptcp_ver=vbox
+    else
+        mptcp_ver=unknown
+        echo "$kernel"
+        echo "error: mptcp_ver is unkown"
+    fi
+
+    if [[ $kernel == *sptcp* ]]; then
+        mptcp_ver=sptcp
+    fi
+
+    echo "$mptcp_ver"
+
+}
+
 function get_mptcp_version () {
 
     local kernel=$(uname -r)
@@ -200,11 +624,17 @@ function make_directory {
     local queue_var  
     local repeat_i 
     local targetdir
+    local sender_i
 
-    echo -n "making directory ..."
+    echo -n "[$(hostname)] making directory ..."
     mkdir ${rootdir}
     mkdir ${rootdir}/tex
     mkdir ${rootdir}/tex/img
+
+    for sender_i in `seq ${sender_num}` 
+    do
+        mkdir ${rootdir}/sender${sender_i}
+    done
 
     for cgn_ctrl_var in "${cgn_ctrl[@]}" 
     do
@@ -365,7 +795,7 @@ function get_user_name_and_rewrite_config {
 }
 
 function clean_log_sender_and_receiver {
-    ssh root@${receiver_ip} "echo > /var/log/kern.log" > /dev/null
+    #ssh root@${receiver_ip} "echo > /var/log/kern.log" > /dev/null
     echo > /var/log/kern.log
 	find /var/log/ -type f -name \* -exec cp -f /dev/null {} \;
 }
@@ -377,8 +807,11 @@ function set_txqueuelen {
 }
 
 function set_qdisc {
+    echo -n "[$(hostname)] setting qdisc to (${qdisc})..."
     tc qdisc replace dev ${eth0} root ${qdisc}
     tc qdisc replace dev ${eth1} root ${qdisc}
+    echo "done"
+
 }
 
 function run_iperf {
@@ -395,6 +828,28 @@ function run_iperf {
 			sleep $app_delay
 		fi
 	done
+}
+
+function run_iperf_multi_sender {
+    local delay
+
+    local sender_i
+    local send_command="run_iperf"
+
+
+    for sender_i in `seq ${sender_num}` 
+    do
+        delay=`echo "scale=5; $duration + ($sender_num - $sender_i) * $sender_delay " | bc`
+		if [ $sender_i = $sender_num ]; then  # When final app launch
+            target_ip="sender${sender_i}_ip"
+            ssh root@${!target_ip} "${senderdir}/slave.sh ${send_command} " 
+		else
+            target_ip="sender${sender_i}_ip"
+            ssh root@${!target_ip} "${senderdir}/slave.sh ${send_command} " &
+			sleep $sender_delay
+		fi
+    done
+
 }
 
 function format_and_copy_log {
@@ -799,6 +1254,7 @@ function create_throughput_time_tex {
 
 }
 
+
 function create_throughput_time_graph_gnuplot {
     local targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
     local img_file
@@ -855,7 +1311,7 @@ function process_throughput_data_interval {
     rm -f ./${targetdir}/${repeat_i}th/throughput/app${app_i}_graph_tmp.dat 
 }
 
-function process_throguhput_data_queue {
+function process_throughput_data_queue {
     local targetdir
     local throguhput
 
@@ -907,7 +1363,7 @@ function process_throughput_data {
        
         process_throughput_data_interval
 
-        process_throguhput_data_queue
+        process_throughput_data_queue
 
         process_throughput_data_rtt
         
@@ -1108,7 +1564,7 @@ function create_throguhput_queue_graph_gnuplot {
 }
 
 function create_queue_graph_and_tex {
-    local targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
+    local targetdir
     local img_file
 
     for cgn_ctrl_var in "${cgn_ctrl[@]}" 
@@ -1122,6 +1578,7 @@ function create_queue_graph_and_tex {
                     for rtt2_var in "${rtt2[@]}"
                     do
                         check_rtt_combination || continue 
+                        targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
 
                         echo -ne "Creating graph ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
                         
@@ -1884,7 +2341,9 @@ function platex_dvipdfmx_link {
     echo -ne "Build tex file ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
     platex -halt-on-error -interaction=nonstopmode ${tex_file_name}.tex > /dev/null 2>&1
     dvipdfmx ${tex_file_name}.dvi > /dev/null 2>&1
-    ln -sf tex/${tex_file_name}.pdf ../
+    if [ -e ./${tex_file_name}.pdf ]; then
+        ln -sf tex/${tex_file_name}.pdf ../
+    fi
     ((current_count++))
 }
 
@@ -1968,6 +2427,8 @@ function create_tex_header {
 	echo "\begin{center}" >> ./tex_header.txt
 	echo "\begin{tabular}{ll}" >> ./tex_header.txt
 	echo "date & \verb|${today}| \\\\" >> ./tex_header.txt
+	echo "Sender & \verb|$(hostname)| \\\\" >> ./tex_header.txt
+	echo "\verb|sender_kernel| & \verb|${kernel}| \\\\" >> ./tex_header.txt
 	echo "\verb|sender_kernel| & \verb|${kernel}| \\\\" >> ./tex_header.txt
 	echo "\verb|receiver_kernel| & \verb|${rcvkernel}| \\\\" >> ./tex_header.txt
 	echo "mptcp version & ${mptcp_ver} \\\\" >> ./tex_header.txt
@@ -1995,10 +2456,12 @@ function create_tex_header {
 
 function join_header {
     local tex_file_name=$1
-    cat ./tex_header.txt ./${tex_file_name}.tex > tmp.tex
-    mv tmp.tex ./${tex_file_name}.tex 
-    rm ./tex_header.txt
-    echo "\end{document}" >> ${tex_file_name}.tex
+    if [ -e ./${tex_file_name}.tex ]; then
+        cat ./tex_header.txt ./${tex_file_name}.tex > tmp.tex
+        mv tmp.tex ./${tex_file_name}.tex 
+        rm ./tex_header.txt
+        echo "\end{document}" >> ${tex_file_name}.tex
+    fi
 }
 
 function join_header_and_tex_file {
