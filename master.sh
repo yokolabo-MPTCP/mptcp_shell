@@ -40,8 +40,8 @@ cd ${rootdir}
 
 get_user_name_and_rewrite_config
 
-#echo_finish_time
-#echo_data_byte
+echo_finish_time
+echo_data_byte
 
 
 for cgn_ctrl_var in "${cgn_ctrl[@]}" 
@@ -57,7 +57,7 @@ do
                 for rtt2_var in "${rtt2[@]}"
                 do
                     check_rtt_combination || continue 
-                    sender_set_netem
+                    sender_set_netem_rtt_and_loss
                     
                     for queue_var in "${queue[@]}"
                     do

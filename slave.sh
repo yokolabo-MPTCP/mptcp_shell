@@ -41,7 +41,7 @@ elif [ "${rcv_command}" = "set_qdisc" ]; then
 elif [ "${rcv_command}" = "set_extended_function" ]; then
     extended_var=$2
     extended_function ${extended_var}
-elif [ "${rcv_command}" = "set_netem" ]; then
+elif [ "${rcv_command}" = "set_netem_rtt_and_loss" ]; then
     rtt1_var=$2
     rtt2_var=$3
     loss_var=$4
@@ -52,11 +52,11 @@ elif [ "${rcv_command}" = "set_txqueuelen" ]; then
 elif [ "${rcv_command}" = "clean_log_sender_and_receiver" ]; then
     clean_log_sender_and_receiver
 elif [ "${rcv_command}" = "run_iperf" ]; then
-
+    duration=$2
     source now_parameter.txt
     
     cd ${rootdir}
-
+    
     run_iperf 
 
 elif [ "${rcv_command}" = "format_and_copy_log" ]; then

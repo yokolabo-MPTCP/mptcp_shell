@@ -362,9 +362,17 @@ function write_and_send_now_parameter {
 
 }
 
-function sender_set_netem {
+function sender_set_netem_rtt_and_loss {
+    local sender_i
+    local target_ip
 
-    ssh root@192.168.255.1 "${senderdir}/slave.sh "set_netem ${rtt1_var} ${rtt2_var} ${loss_var}""
+    for sender_i in `seq ${sender_num}` 
+    do
+        target_ip="sender${sender_i}_ip"
+        ssh root@${!target_ip} "${senderdir}/slave.sh "set_netem_rtt_and_loss ${rtt1_var} ${rtt2_var} ${loss_var}""
+    done
+
+    wait
 }
 
 function init_sender {
@@ -377,7 +385,7 @@ function init_sender {
         scp ./slave.sh root@${!target_ip}:${senderdir} & 
         scp ./function.sh root@${!target_ip}:${senderdir} & 
         scp ./${configfile} root@${!target_ip}:${senderdir}/default.conf &
-        ssh root@${!target_ip} "echo "rootdir=${rootdir}">${senderdir}/rootdir.txt && echo "today=${today}">>${senderdir}/rootdir.txt && echo "memo=${memo}">>${senderdir}/rootdir.txt" &
+        ssh root@${!target_ip} "echo "rootdir=${rootdir}">${senderdir}/rootdir.txt && echo "today=${today}">>${senderdir}/rootdir.txt && echo "memo=${memo}">>${senderdir}/rootdir.txt" 
         mes="source ${senderdir}/default.conf && echo \"rcvkernel=\$(ssh root@\${receiver_ip} 'uname -r')\">>${senderdir}/rootdir.txt " 
         ssh root@${!target_ip} "$mes" 
         #ssh root@${!target_ip} "${senderdir}/slave.sh "make_directory""
@@ -576,6 +584,8 @@ function get_mptcp_version () {
 }
 
 function check_network_available {
+    local ne1_ip="$(hostname)_ne1_ip"
+    local ne2_ip="$(hostname)_ne2_ip"
    echo -n "checking network is available ..."
    ping $receiver_ip -c 1 >> /dev/null
    if [ $? -ne 0 ]; then
@@ -583,16 +593,16 @@ function check_network_available {
         echo "error: can't access to receiver [$receiver_ip]"
         exit
    fi
-   ping $D1_ip -c 1 >> /dev/null
+   ping ${!ne1_ip} -c 1 >> /dev/null
    if [ $? -ne 0 ]; then
         echo "ng"
-        echo "error: can't access to D1 [$D1_ip]"
+        echo "error: can't access to ne1 [${!ne1_ip}]"
         exit
    fi
-    ping $D2_ip -c 1 >> /dev/null
+    ping ${!ne2_ip} -c 1 >> /dev/null
    if [ $? -ne 0 ]; then
         echo "ng"
-        echo "error: can't access to D2 [$D2_ip]"
+        echo "error: can't access to ne2 [${!ne2_ip}]"
         exit
    fi
 
@@ -767,16 +777,20 @@ function set_netem_rtt_and_loss {
 
     local delay_harf1=`echo "scale=3; $rtt1_var / 2 " | bc`
     local delay_harf2=`echo "scale=3; $rtt2_var / 2 " | bc`
+    local ne1_ip="$(hostname)_ne1_ip"
+    local ne2_ip="$(hostname)_ne2_ip"
+    local ne1_eth="$(hostname)_ne1_eth"
+    local ne2_eth="$(hostname)_ne2_eth"
 	if [ $loss_var == 0 ]; then
-			ssh -n root@${D1_ip} "tc qdisc replace dev ${D1_eth0} root netem delay ${delay_harf1}ms &&
-								 tc qdisc replace dev ${D1_eth1} root netem delay ${delay_harf1}ms" 
-			ssh -n root@${D2_ip} "tc qdisc replace dev ${D2_eth0} root netem delay ${delay_harf2}ms &&
-								 tc qdisc replace dev ${D2_eth1} root netem delay ${delay_harf2}ms"
+        ssh -n root@${!ne1_ip} "tc qdisc replace dev ${!ne1_eth} root netem delay ${delay_harf1}ms &&
+                             tc qdisc replace dev ${ne1_ne3_eth} root netem delay ${delay_harf1}ms" 
+        ssh -n root@${!ne2_ip} "tc qdisc replace dev ${!ne2_eth} root netem delay ${delay_harf2}ms &&
+                             tc qdisc replace dev ${ne2_ne3_eth} root netem delay ${delay_harf2}ms"
 	else
-			ssh -n root@${D1_ip} "tc qdisc replace dev ${D1_eth0} root netem delay ${delay_harf1}ms &&
-								 tc qdisc replace dev ${D1_eth1} root netem delay ${delay_harf1}ms loss ${loss_var}%" 
-			ssh -n root@${D2_ip} "tc qdisc replace dev ${D2_eth0} root netem delay ${delay_harf2}ms &&
-								 tc qdisc replace dev ${D2_eth1} root netem delay ${delay_harf2}ms loss ${loss_var}%"
+        ssh -n root@${!ne1_ip} "tc qdisc replace dev ${!ne1_eth} root netem delay ${delay_harf1}ms &&
+                             tc qdisc replace dev ${ne1_ne3_eth} root netem delay ${delay_harf1}ms loss ${loss_var}%" 
+        ssh -n root@${!ne2_ip} "tc qdisc replace dev ${!ne2_eth} root netem delay ${delay_harf2}ms &&
+                             tc qdisc replace dev ${ne2_ne3_eth} root netem delay ${delay_harf2}ms loss ${loss_var}%"
 	fi
     }
 
@@ -831,7 +845,7 @@ function run_iperf {
 }
 
 function run_iperf_multi_sender {
-    local delay
+    local base_duration
 
     local sender_i
     local send_command="run_iperf"
@@ -839,13 +853,13 @@ function run_iperf_multi_sender {
 
     for sender_i in `seq ${sender_num}` 
     do
-        delay=`echo "scale=5; $duration + ($sender_num - $sender_i) * $sender_delay " | bc`
+        base_duration=`echo "scale=5; $duration + ($sender_num - $sender_i) * $sender_delay " | bc`
 		if [ $sender_i = $sender_num ]; then  # When final app launch
             target_ip="sender${sender_i}_ip"
-            ssh root@${!target_ip} "${senderdir}/slave.sh ${send_command} " 
+            ssh root@${!target_ip} "${senderdir}/slave.sh ${send_command} ${base_duration}" 
 		else
             target_ip="sender${sender_i}_ip"
-            ssh root@${!target_ip} "${senderdir}/slave.sh ${send_command} " &
+            ssh root@${!target_ip} "${senderdir}/slave.sh ${send_command} ${base_duration}" &
 			sleep $sender_delay
 		fi
     done
