@@ -584,8 +584,8 @@ function get_mptcp_version () {
 }
 
 function check_network_available {
-    local ne1_ip="$(hostname)_ne1_ip"
-    local ne2_ip="$(hostname)_ne2_ip"
+    local ne1_ip="ne1_$(hostname)_ip"
+    local ne2_ip="ne2_$(hostname)_ip"
    echo -n "checking network is available ..."
    ping $receiver_ip -c 1 >> /dev/null
    if [ $? -ne 0 ]; then
@@ -777,10 +777,10 @@ function set_netem_rtt_and_loss {
 
     local delay_harf1=`echo "scale=3; $rtt1_var / 2 " | bc`
     local delay_harf2=`echo "scale=3; $rtt2_var / 2 " | bc`
-    local ne1_ip="$(hostname)_ne1_ip"
-    local ne2_ip="$(hostname)_ne2_ip"
-    local ne1_eth="$(hostname)_ne1_eth"
-    local ne2_eth="$(hostname)_ne2_eth"
+    local ne1_ip="ne1_$(hostname)_ip"
+    local ne2_ip="ne2_$(hostname)_ip"
+    local ne1_eth="ne1_$(hostname)_eth"
+    local ne2_eth="ne2_$(hostname)_eth"
 	if [ $loss_var == 0 ]; then
         ssh -n root@${!ne1_ip} "tc qdisc replace dev ${!ne1_eth} root netem delay ${delay_harf1}ms &&
                              tc qdisc replace dev ${ne1_ne3_eth} root netem delay ${delay_harf1}ms" 
