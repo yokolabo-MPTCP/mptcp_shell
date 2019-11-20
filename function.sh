@@ -1581,7 +1581,7 @@ function create_time_graph_tex {
     
     echo "\begin{figure}[htbp]" >> ${tex_name}
     echo "\begin{center}" >> ${tex_name}
-    echo '\includegraphics[width=95mm]' >> ${tex_name}
+    echo '\includegraphics[width=95mm,trim=0 50 0 50,clip]' >> ${tex_name}
     echo "{img/${img_name}}" >> ${tex_name} 
     echo "\caption{${item_var} ${cgn_ctrl_var} ext=${extended_var} LOSS=${loss_var}\% RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms queue=${queue_var}pkt ${repeat_i}回目}" >> ${tex_name} 
     echo '\end{center}
@@ -2039,7 +2039,7 @@ function insert_table_parameter {
     local targetname
     local hostname
     echo "\begin{table}[htb]">>${tex_name}
-    echo "\scalebox{0.5}{">>${tex_name}
+    echo "\scalebox{0.66}{">>${tex_name}
     
     for sender_i in `seq ${sender_num}` 
     do
@@ -2052,20 +2052,25 @@ function insert_table_parameter {
                 continue
             fi
         fi
+
+        if [ ${sender_i} -eq "4" ]; then
+            echo "}\par\scalebox{0.66}{">>${tex_name}
+        fi
+
         echo -n "\begin{tabular}{c">>${tex_name}
 
         for var in "${item_to_count_state[@]}" 
         do
             echo -n "c">>${tex_name}
         done
-        echo "}">>${tex_name}
+        echo "} \hline">>${tex_name}
      
         echo -n "name " >>${tex_name}
         for var in "${item_to_count_state[@]}" 
         do
             echo -n "& $var ">>${tex_name}
         done
-        echo "\\\\">>${tex_name}
+        echo "\\\\ \hline \hline">>${tex_name}
         for app_i in `seq ${app}` 
         do
             for subflow_i in `seq ${subflownum}`
@@ -2085,7 +2090,7 @@ function insert_table_parameter {
                     statecount=$(awk 'NR==1' ./${targetdir}/log/${targetname})
                     echo -n "& ${statecount} ">>${tex_name}
                 done
-                echo " \\\\">>${tex_name}
+                echo " \\\\ \hline">>${tex_name}
             done
         done
         echo "\end{tabular}">>${tex_name}
@@ -2866,7 +2871,7 @@ function create_tex_header {
     \documentclass{jsarticle}
     \usepackage[dvipdfmx]{graphicx}
     \usepackage{grffile}
-    \usepackage[top=0truemm,bottom=0truemm,left=5truemm,right=0truemm]{geometry}
+    \usepackage[top=0truemm,bottom=0truemm,left=0truemm,right=0truemm]{geometry}
     \usepackage{multicol}
     \makeatletter
     \newenvironment{figurehere}
@@ -2904,7 +2909,9 @@ function create_tex_header {
 	echo "\end{table}" >> ./tex_header.txt
 	echo "\clearpage" >> ./tex_header.txt
 
+	echo "\newgeometry{top=0truemm,bottom=0truemm,left=5truemm,right=0truemm} " >> ./tex_header.txt
     echo "\begin{verbatim} `cat ../default.conf` \end{verbatim}" >> ./tex_header.txt
+	echo "\restoregeometry " >> ./tex_header.txt
 	echo "\clearpage" >> ./tex_header.txt
 
 }
