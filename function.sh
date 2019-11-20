@@ -1,14 +1,38 @@
 #!/bin/bash
 
+function echo_slave {
+    local str=$1
+    local str2=$2
+    local echo_pos
+    local hostname_i
+    local space=20
+    local str_len=${#str}
+
+    if [ $(hostname) == "master" ]; then
+        echo_pos=$str_len 
+    else
+        hostname_i=$(hostname)
+        hostname_i=${hostname_i:6:1}
+        echo_pos=`echo "scale=1;${str_len} + (${hostname_i} * ${space}) " | bc`
+    fi
+    echo -ne "\033[100D${str}\033[${echo_pos}C[$(hostname)]$str2"
+
+}
+
 function receive_all_data_pdf {
     local sender_i
     local target_ip
+    
+    echo -ne "[$(hostname)]Receiving pdf from each sender... \r" 
     for sender_i in `seq ${sender_num}` 
     do
         target_ip="sender${sender_i}_ip"
-        scp root@${!target_ip}:${senderdir}/${rootdir}/tex/*.pdf ./sender${sender_i}
+        scp root@${!target_ip}:${senderdir}/${rootdir}/tex/*.pdf ./sender${sender_i} >/dev/null &
 
     done
+
+    wait
+    echo "[$(hostname)]Receiving pdf from each sender ...done" 
 
 
 }
@@ -46,6 +70,145 @@ function copy_slave_throughput_ave {
         done
     done
     wait
+
+}
+
+function process_alldata_master {
+    local cgn_ctrl_var  
+    local extended_var
+    local rtt1_var  
+    local rtt2_var  
+    local queue_var  
+    local repeat_i 
+    local targetdir
+    local targetmasterdir
+    local app_meta=()
+    local current_count=0
+    local start_time
+    local one_time
+    local r_time
+    local current_count=0
+    local total_count
+    
+    total_count=`echo "scale=1; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * $(calc_combination_number_of_rtt) * ${#loss[@]} * ${#queue[@]} * $repeat " | bc`
+    echo -ne "[$(hostname)]Processing alldata ..."
+    for cgn_ctrl_var in "${cgn_ctrl[@]}" 
+    do
+        for extended_var in "${extended_parameter[@]}" 
+        do
+            for loss_var in "${loss[@]}"
+            do
+                for rtt1_var in "${rtt1[@]}"
+                do
+                    for rtt2_var in "${rtt2[@]}"
+                    do
+                        check_rtt_combination || continue 
+                        for queue_var in "${queue[@]}"
+                        do
+                            for repeat_i in `seq ${repeat}` 
+                            do
+                                copy_slave_alldata
+                                shift_time_alldata
+                            done
+                        done    
+                    done
+                done
+            done
+        done
+    done
+    echo "done"
+
+
+}
+
+function shift_time_alldata {
+    local target_ip
+    local sender_i
+    local app_i
+    local targetmasterdir
+    local targetdir
+    local count_item
+    local time_adjust
+
+    #echo -ne "[$(hostname)]Shifting time ... \r"
+
+    for sender_i in `seq ${sender_num}` 
+    do
+        (
+            targetmasterdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th/
+            for app_i in `seq ${app}` 
+            do
+                for subflow_i in `seq ${subflownum}` 
+                do
+                    if [ $sender_i != "1" ]; then
+                        time_adjust=`echo "scale=3; (${sender_i} - 1) * ${sender_delay} " | bc`
+                        awk -v delay=${time_adjust} '{
+                           printf ("%f ",$1 + delay);
+                           for(i=2;i<=NF;i++){
+                               printf $i" ";
+                           }
+                           printf("\n");
+
+                        }' ./${targetmasterdir}/log/sender${sender_i}_cwnd${app_i}_subflow${subflow_i}.dat > ./${targetmasterdir}/log/sender${sender_i}_cwnd${app_i}_subflow${subflow_i}_tmp.dat
+                        mv -f ./${targetmasterdir}/log/sender${sender_i}_cwnd${app_i}_subflow${subflow_i}_tmp.dat ./${targetmasterdir}/log/sender${sender_i}_cwnd${app_i}_subflow${subflow_i}.dat
+                    fi
+                done
+
+                if [ $sender_i != "1" ]; then
+                    time_adjust=`echo "scale=3; (${sender_i} - 1) * ${sender_delay} " | bc`
+                    awk -v delay=${time_adjust} '{
+                       printf ("%f ",$1 + delay);
+                       for(i=2;i<=NF;i++){
+                           printf $i" ";
+                       }
+                       printf("\n");
+
+                    }' ./${targetmasterdir}/throughput/sender${sender_i}_app${app_i}.dat > ./${targetmasterdir}/throughput/sender${sender_i}_app${app_i}_tmp.dat
+                    mv -f ./${targetmasterdir}/throughput/sender${sender_i}_app${app_i}_tmp.dat ./${targetmasterdir}/throughput/sender${sender_i}_app${app_i}.dat
+                fi
+            done
+        ) &
+    done
+
+    wait
+    #echo  "[$(hostname)]Shifting time ... done"
+
+   
+}
+function copy_slave_alldata {
+    local target_ip
+    local sender_i
+    local app_i
+    local targetmasterdir
+    local targetdir
+    local count_item
+
+    #echo -ne "[$(hostname)]Receiving alldata ...\r"
+
+    for sender_i in `seq ${sender_num}` 
+    do
+        (
+            target_ip="sender${sender_i}_ip"
+            targetmasterdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th/
+            targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th/
+            for app_i in `seq ${app}` 
+            do
+                for subflow_i in `seq ${subflownum}` 
+                do
+                    #echo -ne "[$(hostname)]copying alldata ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
+                    scp root@${!target_ip}:${senderdir}/${rootdir}/${targetdir}/log/cwnd${app_i}_subflow${subflow_i}.dat ${targetmasterdir}/log/sender${sender_i}_cwnd${app_i}_subflow${subflow_i}.dat>/dev/null 
+                    for count_item in ${item_to_count_state[@]}
+                    do
+                        scp root@${!target_ip}:${senderdir}/${rootdir}/${targetdir}/log/cwnd${app_i}_subflow${subflow_i}_${count_item}.dat ${targetmasterdir}/log/sender${sender_i}_cwnd${app_i}_subflow${subflow_i}_${count_item}.dat >/dev/null
+                    done
+                done
+                scp root@${!target_ip}:${senderdir}/${rootdir}/${targetdir}/throughput/app${app_i}_graph.dat ${targetmasterdir}/throughput/sender${sender_i}_app${app_i}.dat >/dev/null
+            done
+        ) &
+    done
+
+    wait
+    #echo "[$(hostname)]Receiving alldata ... done        "
 
 }
 
@@ -129,8 +292,176 @@ function copy_throughput_queue_ave {
 
 }
 function create_graph_and_tex_master {
+    local total_count
+    local current_count=0
+    total_count=`echo "scale=1; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * $(calc_combination_number_of_rtt) * ${#loss[@]} * ${#queue[@]} * $repeat " | bc`
+    total_count=`echo "scale=1; ${total_count} + ${#cgn_ctrl[@]} * $(calc_combination_number_of_rtt) * ${#loss[@]} * ${#queue[@]} " | bc`
+    total_count=`echo "scale=1; ${total_count} + ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * $(calc_combination_number_of_rtt) * ${#loss[@]}  " | bc`
+    total_count=`echo "scale=1; ${total_count} + ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#loss[@]} * ${#queue[@]}" | bc`
     create_queue_graph_and_tex_master 
+    create_time_graph_and_tex_master 
+
+    echo "[$(hostname)]Creating graph ...done (${current_count} / ${total_count})                       "
 }
+
+function create_time_graph_and_tex_master {
+    local cgn_ctrl_var  
+    local extended_var
+    local rtt1_var  
+    local rtt2_var  
+    local queue_var  
+    local repeat_i 
+    local item_var
+
+    for cgn_ctrl_var in "${cgn_ctrl[@]}" 
+    do
+        for extended_var in "${extended_parameter[@]}" 
+        do
+            for loss_var in "${loss[@]}"
+            do
+                for rtt1_var in "${rtt1[@]}"
+                do
+                    for rtt2_var in "${rtt2[@]}"
+                    do
+                        check_rtt_combination || continue 
+                        for queue_var in "${queue[@]}"
+                        do
+                            for repeat_i in `seq ${repeat}` 
+                            do
+                                echo -ne "[$(hostname)]Creating graph ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
+                                for item_var in "${item_to_create_graph[@]}" 
+                                do
+                                    create_time_graph_plt_master
+                                    create_time_graph_gnuplot           #使い回し
+                                    create_time_graph_tex               #使い回し
+                                done
+                                create_all_graph_tex
+
+                                create_throughput_time_graph_plt_master
+                                create_throughput_time_graph_gnuplot    #使い回し
+                                create_throughput_time_tex              #使い回し
+
+                                ((current_count++))
+                            done
+                        done
+                    done
+                done
+            done
+        done
+    done
+   
+}
+
+function create_throughput_time_graph_plt_master {
+    local app_i
+    local yrangemax
+    local targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}
+    local pltfile=${targetdir}/${repeat_i}th/throughput/plot.plt
+    local sender_i
+    
+    yrangemax=$(set_yrange_max)
+    
+    echo 'set terminal emf enhanced "Arial, 24"
+    set terminal png size 960,720
+    set xlabel "time[s]"
+    set ylabel "throughput"
+    set key outside
+    set size ratio 0.5
+    set boxwidth 0.5 relative 
+    set termoption noenhanced
+    set datafile separator " " ' > ${pltfile}
+    echo "set title \"throughput ${targetdir} ${repeat_i}th\"" >> ${pltfile}
+    echo "set yrange [0:${yrangemax}]" >> ${pltfile}
+    echo "set output \"throughput_${targetdir}_${repeat_i}th.png\"" >> ${pltfile}
+
+    echo -n "plot " >> ${pltfile}
+
+    
+    for sender_i in `seq ${sender_num}` 
+    do
+        for app_i in `seq ${app}` 
+        do
+            echo -n "\"./sender${sender_i}_app${app_i}.dat\" using 1:2 with lines linewidth 2 title \"sender${sender_i}_APP${app_i}\"" >> ${pltfile}
+            if [ $sender_i != $sender_num ] || [ $app_i != $app ]; then
+               echo -n " , " >> ${pltfile}
+            fi
+        done
+    done
+}
+function create_time_graph_gnuplot_master {
+create_time_graph_gnuplot
+}
+
+function create_time_graph_plt_master {
+    local targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th
+    local app_i
+    local subflow_i
+    local targetpos
+    local scale=`echo "scale=1; $duration / 5.0" | bc`
+    local spacing 
+    local gnuplotversion
+    local statecount
+    local var
+
+    gnuplotversion=$(gnuplot --version)
+    gnuplotversion=$(echo ${gnuplotversion:8:1})
+    #if [ ${gnuplotversion} -eq 5 ]; then
+    #    spacing=1
+    #else
+    #    spacing=5
+    #fi
+    #spacing=$((${spacing} + ${#item_to_count_state[@]}))
+
+    targetpos=$(awk -v item_var=${item_var} '{
+        targetname2=item_var"*" 
+        for(i=1;i<=NF;i++){
+            if( match ($i, targetname2) == 1){
+                print i+1;
+		exit
+            }
+        }
+	if(NR>100){
+            exit
+        }
+    }' ./${targetdir}/log/sender1_cwnd1_subflow1.dat) # hard coding
+    echo 'set terminal emf enhanced "Arial, 24"
+    set terminal png size 960,720
+    set key outside
+    set size ratio 0.5
+    set xlabel "time[s]"
+    set termoption noenhanced
+    set datafile separator " " ' > ${targetdir}/${item_var}.plt
+    #echo "set key spacing ${spacing}" >> ${targetdir}/${item_var}.plt
+    echo "set ylabel \"${item_var}\"" >> ${targetdir}/${item_var}.plt
+    echo "set xtics $scale" >> ${targetdir}/${item_var}.plt
+    echo "set xrange [0:${duration}]" >> ${targetdir}/${item_var}.plt
+    echo "set output \"${item_var}_${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png\"" >> ${targetdir}/${item_var}.plt
+
+    echo -n "plot " >> ${targetdir}/${item_var}.plt
+    for sender_i in `seq ${sender_num}` 
+    do
+        for app_i in `seq ${app}` 
+        do
+            for subflow_i in `seq ${subflownum}` 
+            do
+                echo -n "\"./log/sender${sender_i}_cwnd${app_i}_subflow${subflow_i}.dat\" using 1:${targetpos} with lines linewidth 2 title \"sender${sender_i}_APP${app_i}_subflow${subflow_i} " >> ${targetdir}/${item_var}.plt
+                for var in "${item_to_count_state[@]}" 
+                do
+                    statecount=$(awk 'NR==1' ./${targetdir}/log/sender${sender_i}_cwnd${app_i}_subflow${subflow_i}_${var}.dat)
+                    #echo -n "\n ${var}=${statecount} " >> ${targetdir}/${item_var}.plt
+                done
+                echo -n "\" " >> ${targetdir}/${item_var}.plt
+
+                if [ $sender_i != $sender_num ] || [ $app_i != $app ] || [ $subflow_i != $subflownum ];then
+
+                   echo -n " , " >> ${targetdir}/${item_var}.plt
+                    
+                fi
+            done
+        done
+    done
+}
+
 
 function create_throughput_queue_graph_plt_master {
     local repeat_i 
@@ -263,11 +594,6 @@ function create_throughput_queue_graph_plt_master {
     done
 }
 
-
-function create_throguhput_queue_graph_gnuplot_master {
-    echo "deguchi"
-}
-
 function create_queue_graph_and_tex_master {
     local cgn_ctrl_var
     local extended_var
@@ -290,24 +616,19 @@ function create_queue_graph_and_tex_master {
                         check_rtt_combination || continue 
                         targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
 
-                        #echo -ne "Creating graph ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
+                        echo -ne "[$(hostname)]Creating graph ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
                         
                         create_throughput_queue_graph_plt_master
                         create_throguhput_queue_graph_gnuplot
                         create_throughput_queue_graph_tex
                         
-                        #((current_count++))
+                        ((current_count++))
                     done
                 done
             done
         done
     done
 
-}
-
-function create_graph_and_tex_master {
-
-    create_queue_graph_and_tex_master
 }
 
 function send_command {
@@ -332,9 +653,7 @@ function send_command {
         fi
     done
     if [ ${bg_option} -eq 1 ];then
-        #echo -n "waiting..."
         wait
-        #echo "done"
     fi
 }
 
@@ -378,20 +697,29 @@ function sender_set_netem_rtt_and_loss {
 function init_sender {
     local sender_i
 
+    echo -n "[$(hostname)]transmitting shell file..."
     for sender_i in `seq ${sender_num}` 
     do
         
         target_ip="sender${sender_i}_ip"
-        scp ./slave.sh root@${!target_ip}:${senderdir} & 
-        scp ./function.sh root@${!target_ip}:${senderdir} & 
-        scp ./${configfile} root@${!target_ip}:${senderdir}/default.conf &
-        ssh root@${!target_ip} "echo "rootdir=${rootdir}">${senderdir}/rootdir.txt && echo "today=${today}">>${senderdir}/rootdir.txt && echo "memo=${memo}">>${senderdir}/rootdir.txt" 
-        mes="source ${senderdir}/default.conf && echo \"rcvkernel=\$(ssh root@\${receiver_ip} 'uname -r')\">>${senderdir}/rootdir.txt " 
-        ssh root@${!target_ip} "$mes" 
-        #ssh root@${!target_ip} "${senderdir}/slave.sh "make_directory""
+        scp ./slave.sh root@${!target_ip}:${senderdir}>/dev/null & 
+        scp ./function.sh root@${!target_ip}:${senderdir} >/dev/null& 
+        scp ./${configfile} root@${!target_ip}:${senderdir}/default.conf >/dev/null &
 
     done
     wait
+
+    for sender_i in `seq ${sender_num}` 
+    do
+        
+        target_ip="sender${sender_i}_ip"
+        ssh root@${!target_ip} "echo "rootdir=${rootdir}">${senderdir}/rootdir.txt && echo "today=${today}">>${senderdir}/rootdir.txt && echo "memo=${memo}">>${senderdir}/rootdir.txt" 
+        mes="source ${senderdir}/default.conf && echo \"rcvkernel=\$(ssh root@\${receiver_ip} 'uname -r')\">>${senderdir}/rootdir.txt " 
+        ssh root@${!target_ip} "$mes" 
+
+    done
+    wait
+    echo  "done"
 }
 
 function nCr {          # 組み合わせ
@@ -636,7 +964,7 @@ function make_directory {
     local targetdir
     local sender_i
 
-    echo -n "[$(hostname)] making directory ..."
+    echo -ne "[$(hostname)] making directory ...\r"
     mkdir ${rootdir}
     mkdir ${rootdir}/tex
     mkdir ${rootdir}/tex/img
@@ -731,13 +1059,16 @@ function make_directory {
         done
     done
 
-    echo "done"
+    echo "[$(hostname)]making directory...done"
 }
 
 function echo_finish_time {
     local process_time
     local timestamp
     local time
+    local total_time
+    local total_count
+    local process_time
     
     if [ ${mptcp_ver} == "sptcp" ]; then
         process_time=70 # sptcp 一回の実験に必要なデータ処理時間 [s]  
@@ -749,28 +1080,56 @@ function echo_finish_time {
     ((sec=time%60, min=(time%3600)/60, hrs=time/3600))
     timestamp=$(printf "%d時間%02d分%02d秒" $hrs $min $sec)
     echo "予想終了時刻 `date --date "$time seconds"` ${timestamp} "
+
+    total_time=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} * ($duration) * $repeat " | bc`
+    total_count=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} * $repeat " | bc`
+    total_process_time=`echo "scale=5; ${total_count} * ${process_time} " | bc`
+    ((sec=total_time%60, min=(total_time%3600)/60, hrs=total_time/3600))
+    total_timestamp=$(printf "%d時間%02d分%02d秒" $hrs $min $sec)
+    ((sec=total_process_time%60, min=(total_process_time%3600)/60, hrs=total_process_time/3600))
+    process_timestamp=$(printf "%d時間%02d分%02d秒" $hrs $min $sec)
+    echo "実験回数=${total_count} 送受信時間=${total_timestamp} データ処理時間=${process_timestamp}"
 }
 
 function echo_data_byte {
-    local byte
-    local one_data
+    local compressed_byte
+    local normal_byte
+    local compressed_one_data
+    local normal_one_data
     local result
+    local hdd_limit=300 # アラートを表示するデータ量 [GB]
 
     if [ ${mptcp_ver} == "sptcp" ]; then
-        one_data=0.0188 # sptcp 一回の実験に必要なデータ量 [GB]  
+        compressed_one_data=0.0188 # sptcp 一回の実験に必要なデータ量 [GB]  
+        normal_one_data=0
     else
-        one_data=0.0434 # mptcp 一回の実験に必要なデータ量 [GB] 
+        compressed_one_data=0.0421 # mptcp 一回の実験に必要なデータ量 [GB] 
+        normal_one_data=3.9
     fi
 
-    byte=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} *${one_data} * $repeat " | bc`
-    result=`echo "scale=5; ${byte} < 1 " | bc`
+    compressed_byte=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} *${compressed_one_data} * $repeat " | bc`
+    normal_byte=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} *${normal_one_data} * $repeat " | bc`
+    result=`echo "scale=5; ${compressed_byte} < 1 " | bc`
     if [ ${result} = "1" ]; then
         
-        byte=`echo "scale=2; ${byte} * 1000 " | bc`
-        echo "予想データ量 ${byte} MB"
+        compressed_byte=`echo "scale=2; ${compressed_byte} * 1000 " | bc`
+        echo "予想データ量 ${compressed_byte} MB"
+        echo "最大必要容量 ${normal_byte} GB"
     else
-        echo "予想データ量 ${byte} GB"
+        echo "予想データ量 ${compressed_byte} GB"
+        echo "最大必要容量 ${normal_byte} GB"
     fi
+
+    if [ `echo "$normal_byte > $hdd_limit" | bc` == 1 ]; then
+        echo -e "\033[0;31m"
+        echo "########################################################################"
+        echo "#######                                                          #######"
+        echo "####### 注意!!!!! 圧縮前のデータ量が${hdd_limit}GBを超えています         #######"
+        echo "#######                                                          #######"
+        echo "########################################################################"
+        echo -e "\033[0;39m"
+    fi
+
 }
     
 function set_netem_rtt_and_loss {
@@ -849,6 +1208,11 @@ function run_iperf_multi_sender {
 
     local sender_i
     local send_command="run_iperf"
+    local time_i
+    local sec
+    local min
+    local hrs
+    local timestamp
 
 
     for sender_i in `seq ${sender_num}` 
@@ -856,13 +1220,26 @@ function run_iperf_multi_sender {
         base_duration=`echo "scale=5; $duration + ($sender_num - $sender_i) * $sender_delay " | bc`
 		if [ $sender_i = $sender_num ]; then  # When final app launch
             target_ip="sender${sender_i}_ip"
-            ssh root@${!target_ip} "${senderdir}/slave.sh ${send_command} ${base_duration}" 
+            ssh root@${!target_ip} "${senderdir}/slave.sh ${send_command} ${base_duration}" &
 		else
             target_ip="sender${sender_i}_ip"
             ssh root@${!target_ip} "${senderdir}/slave.sh ${send_command} ${base_duration}" &
 			sleep $sender_delay
 		fi
     done
+    # sender_delayが極端になると、最後のsenderの残り実験時間を表示する
+    # 例 sender_delayが10秒でsender数が2なら、最初の10秒は残り時間が表示されず、最後の10秒のみ表示される
+    for time_i in `seq ${duration}` 
+    do
+        total_time_i=`echo "scale=1; ${total_time_i} - 1 " | bc`
+        ((sec=total_time_i%60, min=(total_time_i%3600)/60, hrs=total_time_i/3600))
+        timestamp=$(printf "%d時間%02d分%02d秒" $hrs $min $sec)
+        echo -ne "${cgn_ctrl_var} ext=${extended_var} LOSS=${loss_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms queue=${queue_var}pkt ${repeat_i}回目 ...(${time_i}s / ${duration}s) ($timestamp) \r"
+        sleep 1
+    done
+
+    wait
+    echo "${cgn_ctrl_var} ext=${extended_var} LOSS=${loss_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms queue=${queue_var}pkt ${repeat_i}回目 ...done (${time_i}s / ${duration}s)           "
 
 }
 
@@ -1083,12 +1460,12 @@ function create_time_graph_plt {
 
     gnuplotversion=$(gnuplot --version)
     gnuplotversion=$(echo ${gnuplotversion:8:1})
-    if [ ${gnuplotversion} -eq 5 ]; then
-        spacing=1
-    else
-        spacing=5
-    fi
-    spacing=$((${spacing} + ${#item_to_count_state[@]}))
+    #if [ ${gnuplotversion} -eq 5 ]; then
+    #    spacing=1
+    #else
+    #    spacing=5
+    #fi
+    #spacing=$((${spacing} + ${#item_to_count_state[@]}))
 
     targetpos=$(awk -v item_var=${item_var} '{
         targetname2=item_var"*" 
@@ -1108,7 +1485,7 @@ function create_time_graph_plt {
     set size ratio 0.5
     set xlabel "time[s]"
     set datafile separator " " ' > ${targetdir}/${item_var}.plt
-    echo "set key spacing ${spacing}" >> ${targetdir}/${item_var}.plt
+    #echo "set key spacing ${spacing}" >> ${targetdir}/${item_var}.plt
     echo "set ylabel \"${item_var}\"" >> ${targetdir}/${item_var}.plt
     echo "set xtics $scale" >> ${targetdir}/${item_var}.plt
     echo "set xrange [0:${duration}]" >> ${targetdir}/${item_var}.plt
@@ -1124,7 +1501,7 @@ function create_time_graph_plt {
             for var in "${item_to_count_state[@]}" 
             do
                 statecount=$(awk 'NR==1' ./${targetdir}/log/cwnd${app_i}_subflow${subflow_i}_${var}.dat)
-                echo -n "\n ${var}=${statecount} " >> ${targetdir}/${item_var}.plt
+                #echo -n "\n ${var}=${statecount} " >> ${targetdir}/${item_var}.plt
             done
             echo -n "\" " >> ${targetdir}/${item_var}.plt
             if [ $app_i != $app ] || [ $subflow_i != $subflownum ];then
@@ -1160,7 +1537,7 @@ function create_time_graph_and_tex {
                         do
                             for repeat_i in `seq ${repeat}` 
                             do
-                                echo -ne "Creating graph ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
+                                echo -ne "[$(hostname)]Creating graph ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
                                 for item_var in "${item_to_create_graph[@]}" 
                                 do
                                     create_time_graph_plt
@@ -1195,6 +1572,8 @@ function create_time_graph_gnuplot {
     cd ../../
 
 }
+
+
 
 function create_time_graph_tex {
     local tex_name=tex/${cgn_ctrl_var}_${item_var}_${rootdir}.tex
@@ -1594,7 +1973,7 @@ function create_queue_graph_and_tex {
                         check_rtt_combination || continue 
                         targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}
 
-                        echo -ne "Creating graph ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
+                        echo -ne "[$(hostname)]Creating graph ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
                         
                         create_throughput_queue_graph_plt
                         create_throguhput_queue_graph_gnuplot
@@ -1655,11 +2034,73 @@ function create_all_each_graph_tex {
 
 }
 
+function insert_table_parameter {
+    local targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th/
+    local targetname
+    local hostname
+    echo "\begin{table}[htb]">>${tex_name}
+    echo "\scalebox{0.5}{">>${tex_name}
+    
+    for sender_i in `seq ${sender_num}` 
+    do
+        if [ $(hostname) != "master" ]; then
+            if [ $sender_num == "1" ]; then
+                hostname=$(hostname)
+                sender_i=${hostname:6:1}
+            fi
+            if [ $(hostname) != "sender${sender_i}" ]; then
+                continue
+            fi
+        fi
+        echo -n "\begin{tabular}{c">>${tex_name}
+
+        for var in "${item_to_count_state[@]}" 
+        do
+            echo -n "c">>${tex_name}
+        done
+        echo "}">>${tex_name}
+     
+        echo -n "name " >>${tex_name}
+        for var in "${item_to_count_state[@]}" 
+        do
+            echo -n "& $var ">>${tex_name}
+        done
+        echo "\\\\">>${tex_name}
+        for app_i in `seq ${app}` 
+        do
+            for subflow_i in `seq ${subflownum}`
+            do
+                if [ $(hostname) != "master" ]; then
+                        echo -n "sender${sender_i}\_app${app_i}\_subflow${subflow_i} ">>${tex_name}
+                else
+                    echo -n "sender${sender_i}\_app${app_i}\_subflow${subflow_i} ">>${tex_name}
+                fi
+                for var in "${item_to_count_state[@]}" 
+                do
+                    if [ $(hostname) == "master" ]; then
+                        targetname="sender${sender_i}_cwnd${app_i}_subflow${subflow_i}_${var}.dat"
+                    else
+                        targetname="cwnd${app_i}_subflow${subflow_i}_${var}.dat"
+                    fi
+                    statecount=$(awk 'NR==1' ./${targetdir}/log/${targetname})
+                    echo -n "& ${statecount} ">>${tex_name}
+                done
+                echo " \\\\">>${tex_name}
+            done
+        done
+        echo "\end{tabular}">>${tex_name}
+    done
+    echo "}" >>${tex_name}
+    echo "\end{table}" >>${tex_name}
+
+}
+
 function create_all_graph_tex {
     local tex_name=tex/${cgn_ctrl_var}_alldata_${rootdir}.tex
     
     echo "\\" >> ${tex_name} 
     echo "\begin{center}${cgn_ctrl_var} ext=${extended_var} LOSS=${loss_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms queue=${queue_var}pkt ${repeat_i}th \end{center}" >> ${tex_name} 
+    insert_table_parameter
     echo "\begin{multicols}{2}" >> ${tex_name}
 
     create_all_each_graph_tex "throughput"
@@ -1856,7 +2297,7 @@ function create_rtt_graph_and_tex {
             do
                 for queue_var in "${queue[@]}"
                 do
-                    echo -ne "Creating graph ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
+                    echo -ne "[$(hostname)]Creating graph ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
 
                     create_throughput_rtt_graph_plt
                     create_throughput_rtt_graph_gnuplot        
@@ -2153,7 +2594,7 @@ function create_ext_graph_and_tex {
                     check_rtt_combination || continue 
                     for queue_var in "${queue[@]}"
                     do
-                        echo -ne "Creating graph ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
+                        echo -ne "[$(hostname)]Creating graph ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
 
                         create_throughput_ext_graph_plt
                         create_throughput_ext_graph_gnuplot
@@ -2237,7 +2678,8 @@ function process_log_data {
                             for repeat_i in `seq ${repeat}` 
                             do
                                 calc_remaining_time
-                                echo -ne "Processing data ...$(calc_progress_percent)% (${current_count} / ${total_count}) 残り${r_time}s     \r"
+                                echo -ne "[$(hostname)] Processing data ...$(calc_progress_percent)% (${current_count} / ${total_count}) 残り${r_time}s     \r"
+                                #echo_slave "Processing data ..." "$(calc_progress_percent)% (${current_count} / ${total_count}) 残り${r_time}s"
                                 separate_cwnd
                                 get_app_meta
                                 extract_cwnd_each_flow
@@ -2253,7 +2695,7 @@ function process_log_data {
             done
         done
     done
-    echo "Processing data ...done (${current_count} / ${total_count})                       "
+    echo "[$(hostname)]Processing data ...done (${current_count} / ${total_count})                       "
 }
 
 function create_graph_and_tex {
@@ -2270,7 +2712,7 @@ function create_graph_and_tex {
     create_queue_graph_and_tex
     create_rtt_graph_and_tex
 
-    echo "Creating graph ...done (${current_count} / ${total_count})                       "
+    echo "[$(hostname)]Creating graph ...done (${current_count} / ${total_count})                       "
 }
 
 function delete_and_compress_processed_log_data {
@@ -2302,7 +2744,7 @@ function delete_and_compress_processed_log_data {
                         do
                             for repeat_i in `seq ${repeat}` 
                             do
-                                echo -ne "Delete and compress data ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
+                                echo -ne "[$(hostname)] Delete and compress data ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
                                 targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th/log
                                 cd ${targetdir}
                                 tar cvzf kern.dat.tar.gz kern.dat > /dev/null 2>&1
@@ -2346,13 +2788,13 @@ function delete_and_compress_processed_log_data {
             done
         done
     done
-    echo "Delete and compress data ...done (${current_count} / ${total_count})                       "
+    echo "[$(hostname)]Delete and compress data ...done (${current_count} / ${total_count})                       "
 }
 
 function platex_dvipdfmx_link {
     local tex_file_name=$1
 
-    echo -ne "Build tex file ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
+    echo -ne "[$(hostname)] Build tex file ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
     platex -halt-on-error -interaction=nonstopmode ${tex_file_name}.tex > /dev/null 2>&1
     dvipdfmx ${tex_file_name}.dvi > /dev/null 2>&1
     if [ -e ./${tex_file_name}.pdf ]; then
@@ -2410,7 +2852,7 @@ function build_tex_to_pdf {
         rm -f ${cgn_ctrl_var}*.aux
     
     done
-    echo "Build tex file ...done (${current_count} / ${total_count})                       "
+    echo "[$(hostname)]Build tex file ...done (${current_count} / ${total_count})                       "
 
     cd ..
 }
@@ -2442,7 +2884,6 @@ function create_tex_header {
 	echo "\begin{tabular}{ll}" >> ./tex_header.txt
 	echo "date & \verb|${today}| \\\\" >> ./tex_header.txt
 	echo "Sender & \verb|$(hostname)| \\\\" >> ./tex_header.txt
-	echo "\verb|sender_kernel| & \verb|${kernel}| \\\\" >> ./tex_header.txt
 	echo "\verb|sender_kernel| & \verb|${kernel}| \\\\" >> ./tex_header.txt
 	echo "\verb|receiver_kernel| & \verb|${rcvkernel}| \\\\" >> ./tex_header.txt
 	echo "mptcp version & ${mptcp_ver} \\\\" >> ./tex_header.txt
