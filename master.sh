@@ -2,7 +2,7 @@
 umask 000
 clear
 
-trap "kill 0" EXIT # Ctrl-Cを押されたときの処理
+trap "kill 0" SIGINT # Ctrl-Cを押されたときの処理
 
 cwd=`dirname $0`
 cd $cwd
@@ -17,7 +17,6 @@ check_argument $@
 check_root_user
 check_exist_config_file
 check_exist_extended_parameter
-
 
 kernel=$(uname -r)
 #check_network_available
@@ -44,10 +43,11 @@ get_user_name_and_rewrite_config
 
 echo_finish_time
 echo_data_byte
+echo_disk_space
 
 total_time=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} * ($duration) * $repeat " | bc`
 total_time_i=`echo "scale=1; $total_time + $total_process_time " | bc`
-
+SECONDS=0
 for cgn_ctrl_var in "${cgn_ctrl[@]}" 
 do
     send_command "set_sysctl net.ipv4.tcp_congestion_control ${cgn_ctrl_var}" "bg"
@@ -61,10 +61,10 @@ do
                 for rtt2_var in "${rtt2[@]}"
                 do
                     check_rtt_combination || continue 
-                    sender_set_netem_rtt_and_loss
                     
                     for queue_var in "${queue[@]}"
                     do
+                        sender_set_netem_rtt_and_loss
                         send_command "set_txqueuelen ${queue_var}"
                         for repeat_i in `seq ${repeat}` 
                         do
@@ -83,11 +83,16 @@ do
 		done
 	done
 done
+exptime=$SECONDS
+echo "通信時間: $exptime"
+calc_used_disk_space
 
+SECONDS=0
 send_command "process_log_data" "bg"
 send_command "create_graph_and_tex" "bg"
 send_command "join_header_and_tex_file" "bg"
 send_command "build_tex_to_pdf" "bg"
+
 
 process_throughput_master
 process_alldata_master
@@ -100,6 +105,11 @@ receive_all_data_pdf
 send_command "delete_and_compress_processed_log_data" "bg"
 #delete_and_compress_processed_log_data
 
+exptime=$SECONDS
+echo "処理時間: $exptime"
+calc_used_disk_space2
+
 umask 022
 
 date
+exit

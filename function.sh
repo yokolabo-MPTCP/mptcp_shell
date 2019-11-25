@@ -1,5 +1,65 @@
 #!/bin/bash
 
+function get_slave_available_disk_space {
+    local sender_i
+    local target_ip
+    local disk_data
+    unset disk[@]
+    for sender_i in `seq ${sender_num}` 
+    do
+        target_ip="sender${sender_i}_ip"
+        disk_data=$(ssh root@${!target_ip} "df -H | grep sda2 | awk '{print \$4}'") 
+        disk+=(${disk_data::-1})
+    done
+
+    wait
+
+}
+
+function echo_disk_space {
+    local i
+    get_slave_available_disk_space
+    echo -n "空き容量: "
+    i=1
+    for disk_i in "${disk[@]}"
+    do
+        echo -n "[sender${i}]${disk_i}GB "
+        let i++
+    done
+    echo ""
+}
+
+function calc_used_disk_space {
+    local data
+
+    for disk_i in "${disk[@]}"
+    do
+        before_disk+=(${disk_i})
+    done
+
+    get_slave_available_disk_space
+    echo -n "使用容量: "
+    for i in "${!disk[@]}"
+    do
+        data=`echo "scale=1;${disk[$i]} - ${before_disk[$i]} " | bc`
+        echo -n "[sender${i}]${data}GB "
+    done
+    echo ""
+}
+
+function calc_used_disk_space2 {
+    local data
+
+    get_slave_available_disk_space
+    echo -n "使用容量: "
+    for i in "${!disk[@]}"
+    do
+        data=`echo "scale=1;${disk[$i]} - ${before_disk[$i]} " | bc`
+        echo -n "[sender${i}]${data}GB "
+    done
+    echo ""
+}
+
 function echo_slave {
     local str=$1
     local str2=$2
@@ -897,7 +957,7 @@ function sender_set_netem_rtt_and_loss {
     for sender_i in `seq ${sender_num}` 
     do
         target_ip="sender${sender_i}_ip"
-        ssh root@${!target_ip} "${senderdir}/slave.sh "set_netem_rtt_and_loss ${rtt1_var} ${rtt2_var} ${loss_var}""
+        ssh root@${!target_ip} "${senderdir}/slave.sh "set_netem_rtt_and_loss ${rtt1_var} ${rtt2_var} ${loss_var} ${queue_var}""
     done
 
     wait
@@ -1307,7 +1367,7 @@ function echo_finish_time {
     if [ ${mptcp_ver} == "sptcp" ]; then
         process_time=70 # sptcp 一回の実験に必要なデータ処理時間 [s]  
     else
-        process_time=227 # mptcp 一回の実験に必要なデータ処理時間 [s] 
+        process_time=83 # mptcp 一回の実験に必要なデータ処理時間 [s] 
     fi
 
     time=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} * ($duration+${process_time}) * $repeat " | bc`
@@ -1337,8 +1397,8 @@ function echo_data_byte {
         compressed_one_data=0.0188 # sptcp 一回の実験に必要なデータ量 [GB]  
         normal_one_data=0
     else
-        compressed_one_data=0.0421 # mptcp 一回の実験に必要なデータ量 [GB] 
-        normal_one_data=3.9
+        compressed_one_data=0.0075 # mptcp 一回の実験に必要なデータ量 [GB] 
+        normal_one_data=0.2367
     fi
 
     compressed_byte=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} *${compressed_one_data} * $repeat " | bc`
@@ -1348,7 +1408,13 @@ function echo_data_byte {
         
         compressed_byte=`echo "scale=2; ${compressed_byte} * 1000 " | bc`
         echo "予想データ量 ${compressed_byte} MB"
-        echo "最大必要容量 ${normal_byte} GB"
+        result=`echo "scale=5; ${normal_byte} < 1 " | bc`
+        if [ ${result} = "1" ]; then
+            normal_byte=`echo "scale=2; ${normal_byte} * 1000 " | bc`
+            echo "最大必要容量 ${normal_byte} MB"
+        else
+            echo "最大必要容量 ${normal_byte} GB"
+        fi
     else
         echo "予想データ量 ${compressed_byte} GB"
         echo "最大必要容量 ${normal_byte} GB"
@@ -1374,16 +1440,24 @@ function set_netem_rtt_and_loss {
     local ne2_ip="ne2_$(hostname)_ip"
     local ne1_eth="ne1_$(hostname)_eth"
     local ne2_eth="ne2_$(hostname)_eth"
+    local netem_queue
+
+    if [ $queue_is_netem_queue == 1 ]; then
+        netem_queue=$queue_var
+    else
+        netem_queue=1000
+    fi
+
 	if [ $loss_var == 0 ]; then
-        ssh -n root@${!ne1_ip} "tc qdisc replace dev ${!ne1_eth} root netem delay ${delay_harf1}ms &&
-                             tc qdisc replace dev ${ne1_ne3_eth} root netem delay ${delay_harf1}ms" 
-        ssh -n root@${!ne2_ip} "tc qdisc replace dev ${!ne2_eth} root netem delay ${delay_harf2}ms &&
-                             tc qdisc replace dev ${ne2_ne3_eth} root netem delay ${delay_harf2}ms"
+        ssh -n root@${!ne1_ip} "tc qdisc replace dev ${!ne1_eth} root netem limit ${netem_queue} delay ${delay_harf1}ms &&
+                             tc qdisc replace dev ${ne1_ne3_eth} root netem limit ${netem_queue} delay ${delay_harf1}ms" 
+        ssh -n root@${!ne2_ip} "tc qdisc replace dev ${!ne2_eth} root netem limit ${netem_queue} delay ${delay_harf2}ms &&
+                             tc qdisc replace dev ${ne2_ne3_eth} root netem limit ${netem_queue} delay ${delay_harf2}ms"
 	else
-        ssh -n root@${!ne1_ip} "tc qdisc replace dev ${!ne1_eth} root netem delay ${delay_harf1}ms &&
-                             tc qdisc replace dev ${ne1_ne3_eth} root netem delay ${delay_harf1}ms loss ${loss_var}%" 
-        ssh -n root@${!ne2_ip} "tc qdisc replace dev ${!ne2_eth} root netem delay ${delay_harf2}ms &&
-                             tc qdisc replace dev ${ne2_ne3_eth} root netem delay ${delay_harf2}ms loss ${loss_var}%"
+        ssh -n root@${!ne1_ip} "tc qdisc replace dev ${!ne1_eth} root netem limit ${netem_queue} delay ${delay_harf1}ms &&
+                             tc qdisc replace dev ${ne1_ne3_eth} root netem limit ${netem_queue} delay ${delay_harf1}ms loss ${loss_var}%" 
+        ssh -n root@${!ne2_ip} "tc qdisc replace dev ${!ne2_eth} root netem limit ${netem_queue} delay ${delay_harf2}ms &&
+                             tc qdisc replace dev ${ne2_ne3_eth} root netem limit ${netem_queue} delay ${delay_harf2}ms loss ${loss_var}%"
 	fi
     }
 
@@ -1408,9 +1482,15 @@ function clean_log_sender_and_receiver {
 }
 
 function set_txqueuelen {
-    
-    ip link set dev ${eth0} txqueuelen ${queue_var}
-    ip link set dev ${eth1} txqueuelen ${queue_var}
+    local txqueue
+    if [ $queue_is_netem_queue == 1 ]; then
+        txqueue=1000
+    else
+        txqueue=$queue_var
+    fi
+
+    ip link set dev ${eth0} txqueuelen ${txqueue}
+    ip link set dev ${eth1} txqueuelen ${txqueue}
 }
 
 function set_qdisc {
@@ -1659,7 +1739,11 @@ function extract_cwnd_each_flow {
         done
     done
 
-   
+    rm -f ./${targetdir}/log/cwnd.dat
+    for app_i in `seq ${app}` 
+    do
+        rm -f ./${targetdir}/log/cwnd${app_i}.dat
+    done 
 }
 
 function count_mptcp_state {
@@ -3146,6 +3230,7 @@ function process_log_data {
                                 separate_cwnd
                                 get_app_meta
                                 extract_cwnd_each_flow
+
                                 count_mptcp_state
                                 process_throughput_data
                                 process_srtt_ext_boxplot_data
@@ -3440,10 +3525,11 @@ function join_header_and_tex_file {
         join_header ${tex_file_name}
         
     done
+    cgn_ctrl_var=All
     tex_file_name=throughput_cgnctrl_${rootdir}
     create_tex_header "Throughput Congestion Control"
     join_header ${tex_file_name}
-    create_tex_header "Throughput Congestion CCongestion Control ${repeat} repeat"
+    create_tex_header "Throughput Congestion Control ${repeat} repeat"
     join_header ${tex_file_name}_ave
 
     

@@ -45,6 +45,7 @@ elif [ "${rcv_command}" = "set_netem_rtt_and_loss" ]; then
     rtt1_var=$2
     rtt2_var=$3
     loss_var=$4
+    queue_var=$5
     set_netem_rtt_and_loss
 elif [ "${rcv_command}" = "set_txqueuelen" ]; then
     queue_var=$2
