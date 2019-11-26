@@ -8,22 +8,21 @@ function get_slave_available_disk_space {
     for sender_i in `seq ${sender_num}` 
     do
         target_ip="sender${sender_i}_ip"
-        disk_data=$(ssh root@${!target_ip} "df -H | grep sda2 | awk '{print \$4}'") 
-        disk+=(${disk_data::-1})
+        disk_data=$(ssh root@${!target_ip} "df | grep sda2 | awk '{print \$4}'") 
+        disk_data=`echo "scale=3;${disk_data} / 1000000  " | bc`
+        disk=("${disk[@]}" ${disk_data})
     done
-
-    wait
-
 }
 
 function echo_disk_space {
     local i
+    local disk_i
     get_slave_available_disk_space
     echo -n "空き容量: "
     i=1
     for disk_i in "${disk[@]}"
     do
-        echo -n "[sender${i}]${disk_i}GB "
+        echo -n "[sender${i}] ${disk_i}GB "
         let i++
     done
     echo ""
@@ -31,6 +30,8 @@ function echo_disk_space {
 
 function calc_used_disk_space {
     local data
+    local i
+    local disk_i
 
     for disk_i in "${disk[@]}"
     do
@@ -39,23 +40,29 @@ function calc_used_disk_space {
 
     get_slave_available_disk_space
     echo -n "使用容量: "
-    for i in "${!disk[@]}"
+    i=1
+    for disk_i in "${!disk[@]}"
     do
-        data=`echo "scale=1;${disk[$i]} - ${before_disk[$i]} " | bc`
-        echo -n "[sender${i}]${data}GB "
+        data=`echo "scale=3;${before_disk[$disk_i]} - ${disk[$disk_i]}  " | bc`
+        echo -n "[sender${i}] ${data}GB "
+        let i++
     done
     echo ""
 }
 
 function calc_used_disk_space2 {
     local data
+    local i
+    local disk_i
 
     get_slave_available_disk_space
     echo -n "使用容量: "
-    for i in "${!disk[@]}"
+    i=1
+    for disk_i in "${!disk[@]}"
     do
-        data=`echo "scale=1;${disk[$i]} - ${before_disk[$i]} " | bc`
-        echo -n "[sender${i}]${data}GB "
+        data=`echo "scale=3;${before_disk[$disk_i]} - ${disk[$disk_i]} " | bc`
+        echo -n "[sender${i}] ${data}GB "
+        let i++
     done
     echo ""
 }
@@ -1363,14 +1370,19 @@ function echo_finish_time {
     local total_time
     local total_count
     local process_time
+    local copy_log_time
     
     if [ ${mptcp_ver} == "sptcp" ]; then
         process_time=70 # sptcp 一回の実験に必要なデータ処理時間 [s]  
+    elif [ ${sender_num} == 1 ]; then
+        process_time=212 # mptcp 一回の実験に必要なデータ処理時間 [s] (1sender 3app)
+        copy_log_time=28
     else
-        process_time=83 # mptcp 一回の実験に必要なデータ処理時間 [s] 
+        process_time=83 # mptcp 一回の実験に必要なデータ処理時間 [s] (3sender 1app)
+        copy_log_time=16
     fi
 
-    time=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} * ($duration+${process_time}) * $repeat " | bc`
+    time=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} * (${duration}+${process_time}+${copy_log_time}) * $repeat " | bc`
     ((sec=time%60, min=(time%3600)/60, hrs=time/3600))
     timestamp=$(printf "%d時間%02d分%02d秒" $hrs $min $sec)
     echo "予想終了時刻 `date --date "$time seconds"` ${timestamp} "
@@ -1396,8 +1408,11 @@ function echo_data_byte {
     if [ ${mptcp_ver} == "sptcp" ]; then
         compressed_one_data=0.0188 # sptcp 一回の実験に必要なデータ量 [GB]  
         normal_one_data=0
+    elif [ $sender_num == 1 ]; then
+        compressed_one_data=0.0463 # mptcp 一回の実験に必要なデータ量 [GB] (1sender app3)
+        normal_one_data=2
     else
-        compressed_one_data=0.0075 # mptcp 一回の実験に必要なデータ量 [GB] 
+        compressed_one_data=0.0075 # mptcp 一回の実験に必要なデータ量 [GB] (3sender app1)
         normal_one_data=0.2367
     fi
 
@@ -3761,9 +3776,11 @@ function decompression_and_reprocess_log_data {
                                 get_app_meta
                                 extract_cwnd_each_flow
                                 count_mptcp_state
+                                process_throughput_data
                                 process_srtt_ext_boxplot_data
                                 (( current_count++))
                             done
+                            process_throughput_data_ave
                         done    
                     done
                 done
@@ -3773,3 +3790,4 @@ function decompression_and_reprocess_log_data {
     
     echo "Reprocessing data ...done                                    "
 }
+

@@ -93,20 +93,23 @@ send_command "create_graph_and_tex" "bg"
 send_command "join_header_and_tex_file" "bg"
 send_command "build_tex_to_pdf" "bg"
 
+slavetime=$SECONDS
+echo "処理時間[Slave]: $slavetime"
+if [ $sender_num != 1 ]; then
+    process_throughput_master
+    process_alldata_master
+    create_graph_and_tex_master
+    join_header_and_tex_file
+    build_tex_to_pdf
+fi
 
-process_throughput_master
-process_alldata_master
-create_graph_and_tex_master
-
-join_header_and_tex_file
-build_tex_to_pdf
 receive_all_data_pdf
 
 send_command "delete_and_compress_processed_log_data" "bg"
 #delete_and_compress_processed_log_data
 
 exptime=$SECONDS
-echo "処理時間: $exptime"
+echo "処理時間[Total]: $exptime"
 calc_used_disk_space2
 
 umask 022
