@@ -3852,7 +3852,9 @@ function build_tex_to_pdf {
 
 function create_tex_header {
     local item_name=$1
-
+    local sender_i
+    local target_ip
+    local kernel_name
 
 
     echo '
@@ -3879,6 +3881,13 @@ function create_tex_header {
 	echo "Sender & \verb|$(hostname)| \\\\" >> ./tex_header.txt
 	echo "\verb|sender_kernel| & \verb|${kernel}| \\\\" >> ./tex_header.txt
 	echo "\verb|receiver_kernel| & \verb|${rcvkernel}| \\\\" >> ./tex_header.txt
+    for sender_i in `seq ${sender_num}` 
+    do
+        target_ip="sender${sender_i}_ip"
+        kernel_name=$(ssh root@${!target_ip} "uname -a") 
+        echo "\verb|sender${sender_i}_kernel| & \verb|${kernel_name}| \\\\" >> ./tex_header.txt
+    done
+    
 	echo "mptcp version & ${mptcp_ver} \\\\" >> ./tex_header.txt
 	echo "other cgnctrl & ${cgn_ctrl[@]} \\\\" >> ./tex_header.txt
 	echo "qdisc & \verb|${qdisc}|\\\\" >> ./tex_header.txt
@@ -3890,11 +3899,22 @@ function create_tex_header {
 	echo "queue & ${queue[@]}\\\\" >> ./tex_header.txt
 	echo "duration & ${duration}\\\\" >> ./tex_header.txt
 	echo "\verb|app_delay| & \verb|${app_delay}|\\\\" >> ./tex_header.txt
+	echo "\verb|sender_delay| & \verb|${sender_delay}|\\\\" >> ./tex_header.txt
 	echo "repeat & ${repeat}\\\\" >> ./tex_header.txt
 	echo "memo & \verb|${memo}|\\\\" >> ./tex_header.txt
 	echo "\end{tabular}" >> ./tex_header.txt
 	echo "\end{center}" >> ./tex_header.txt
 	echo "\end{table}" >> ./tex_header.txt
+	echo "\clearpage" >> ./tex_header.txt
+	echo "--------ne1_qdisc--------" >> ./tex_header.txt
+    ne_qdisc=$(ssh root@${sender1_ip} "ssh root@${ne1_sender1_ip} "tc qdisc show"") 
+	echo "${ne_qdisc}" >> ./tex_header.txt
+	echo "--------ne2_qdisc--------" >> ./tex_header.txt
+    ne_qdisc=$(ssh root@${sender1_ip} "ssh root@${ne2_sender1_ip} "tc qdisc show"") 
+	echo "${ne_qdisc}" >> ./tex_header.txt
+	echo "--------ne3_qdisc--------" >> ./tex_header.txt
+    ne_qdisc=$(ssh root@${sender1_ip} "ssh root@${ne3_ne1_ip} "tc qdisc show"") 
+	echo "${ne_qdisc}" >> ./tex_header.txt
 	echo "\clearpage" >> ./tex_header.txt
 
 	echo "\newgeometry{top=0truemm,bottom=0truemm,left=5truemm,right=0truemm} " >> ./tex_header.txt
