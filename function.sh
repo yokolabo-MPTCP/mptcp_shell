@@ -1391,6 +1391,46 @@ function sender_set_netem_rtt_and_loss {
     wait
 }
 
+function get_sender_and_ne_status_and_scp {
+    local sender_i
+    local target_ip
+    local kernel_name
+    local ne_qdisc
+    local sender_qdisc
+
+    for sender_i in `seq ${sender_num}` 
+    do
+        target_ip="sender${sender_i}_ip"
+        kernel_name=$(ssh root@${!target_ip} "uname -a") 
+        echo "sender${sender_i} ${kernel_name}" >> ./${rootdir}/sender_and_ne_status.txt
+    done
+    for sender_i in `seq ${sender_num}` 
+    do
+        target_ip="sender${sender_i}_ip"
+        sender_qdisc=$(ssh root@${!target_ip} "tc qdisc show") 
+        echo "---sender${sender_i}---" >> ./${rootdir}/sender_and_ne_status.txt
+        echo "${sender_qdisc}" >> ./${rootdir}/sender_and_ne_status.txt
+    done
+    ne_qdisc=$(ssh root@${sender1_ip} "ssh root@${ne1_ne3_ip} "tc qdisc show"") 
+    echo "---ne1---" >> ./${rootdir}/sender_and_ne_status.txt
+    echo "${ne_qdisc}" >> ./${rootdir}/sender_and_ne_status.txt
+    ne_qdisc=$(ssh root@${sender1_ip} "ssh root@${ne2_ne3_ip} "tc qdisc show"") 
+    echo "---ne2---" >> ./${rootdir}/sender_and_ne_status.txt
+    echo "${ne_qdisc}" >> ./${rootdir}/sender_and_ne_status.txt
+    ne_qdisc=$(ssh root@${sender1_ip} "ssh root@${ne3_ne1_ip} "tc qdisc show"") 
+    echo "---ne3---" >> ./${rootdir}/sender_and_ne_status.txt
+    echo "${ne_qdisc}" >> ./${rootdir}/sender_and_ne_status.txt
+
+    for sender_i in `seq ${sender_num}` 
+    do
+        target_ip="sender${sender_i}_ip"
+        scp ${rootdir}/sender_and_ne_status.txt root@${!target_ip}:${senderdir}/${rootdir} >/dev/null &
+    done
+
+    wait
+
+}
+
 function init_sender {
     local sender_i
 
@@ -1524,14 +1564,12 @@ function set_extended_kernel_parameter {
 
 function check_sysctl_error { 
     # sysctl parameter check
-    echo ""
-    echo "Invalid argument of sysctl parameter."
-    echo "Please check .conf and kernel program."
-    exit	
+    echo "Invalid argument of sysctl parameter. are you ok?"
 }
 
-function get_mptcp_version_sender1 {
-    local kernel=$(ssh root@${sender1_ip} "uname -r")
+function get_mptcp_version_master {
+    local kernel=$(grep -m 1 "mptcp" ./${rootdir}/sender_and_ne_status.txt | awk '{print $4}')
+
     if [[ $kernel == *3.5.7* ]]; then
         mptcp_ver=0.86
     elif [[ $kernel == *3.1.0* ]]; then
@@ -1795,6 +1833,7 @@ function echo_finish_time {
     
     if [ ${mptcp_ver} == "sptcp" ]; then
         process_time=70 # sptcp 一回の実験に必要なデータ処理時間 [s]  
+        copy_log_time=28 # （仮）
     elif [ ${sender_num} == 1 ]; then
         process_time=212 # mptcp 一回の実験に必要なデータ処理時間 [s] (1sender 3app)
         copy_log_time=28
@@ -2056,6 +2095,8 @@ function separate_cwnd {
         for(i=4;i<=NF;i++){
             printf("%s ",$i)
         }
+    }else if(match ($6, target)==1){
+		printf("%s",$0)
     }else{
         next
     }
@@ -3881,13 +3922,7 @@ function create_tex_header {
 	echo "Sender & \verb|$(hostname)| \\\\" >> ./tex_header.txt
 	echo "\verb|sender_kernel| & \verb|${kernel}| \\\\" >> ./tex_header.txt
 	echo "\verb|receiver_kernel| & \verb|${rcvkernel}| \\\\" >> ./tex_header.txt
-    for sender_i in `seq ${sender_num}` 
-    do
-        target_ip="sender${sender_i}_ip"
-        kernel_name=$(ssh root@${!target_ip} "uname -a") 
-        echo "\verb|sender${sender_i}_kernel| & \verb|${kernel_name}| \\\\" >> ./tex_header.txt
-    done
-    
+        
 	echo "mptcp version & ${mptcp_ver} \\\\" >> ./tex_header.txt
 	echo "other cgnctrl & ${cgn_ctrl[@]} \\\\" >> ./tex_header.txt
 	echo "qdisc & \verb|${qdisc}|\\\\" >> ./tex_header.txt
@@ -3906,15 +3941,10 @@ function create_tex_header {
 	echo "\end{center}" >> ./tex_header.txt
 	echo "\end{table}" >> ./tex_header.txt
 	echo "\clearpage" >> ./tex_header.txt
-	echo "--------ne1_qdisc--------" >> ./tex_header.txt
-    ne_qdisc=$(ssh root@${sender1_ip} "ssh root@${ne1_sender1_ip} "tc qdisc show"") 
-	echo "${ne_qdisc}" >> ./tex_header.txt
-	echo "--------ne2_qdisc--------" >> ./tex_header.txt
-    ne_qdisc=$(ssh root@${sender1_ip} "ssh root@${ne2_sender1_ip} "tc qdisc show"") 
-	echo "${ne_qdisc}" >> ./tex_header.txt
-	echo "--------ne3_qdisc--------" >> ./tex_header.txt
-    ne_qdisc=$(ssh root@${sender1_ip} "ssh root@${ne3_ne1_ip} "tc qdisc show"") 
-	echo "${ne_qdisc}" >> ./tex_header.txt
+	echo "\newgeometry{top=0truemm,bottom=0truemm,left=5truemm,right=0truemm} " >> ./tex_header.txt
+    echo "\begin{verbatim} `cat ../sender_and_ne_status.txt` \end{verbatim}" >> ./tex_header.txt
+	echo "\restoregeometry " >> ./tex_header.txt
+
 	echo "\clearpage" >> ./tex_header.txt
 
 	echo "\newgeometry{top=0truemm,bottom=0truemm,left=5truemm,right=0truemm} " >> ./tex_header.txt

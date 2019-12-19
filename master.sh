@@ -33,7 +33,9 @@ send_command "get_mptcp_version" "bg"
 send_command "set_kernel_parameter" "bg"
 send_command "set_qdisc" "bg"
 
-mptcp_ver=$(get_mptcp_version_sender1)
+get_sender_and_ne_status_and_scp
+
+mptcp_ver=$(get_mptcp_version_master)
 
 cp -f ${configfile} ${rootdir}/default.conf
 
