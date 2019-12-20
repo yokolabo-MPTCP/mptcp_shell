@@ -158,7 +158,7 @@ function process_alldata_master {
     local total_count
     
     total_count=`echo "scale=1; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * $(calc_combination_number_of_rtt) * ${#loss[@]} * ${#queue[@]} * $repeat " | bc`
-    echo -ne "[$(hostname)]Processing alldata ..."
+    echo -ne "[$(hostname)]Processing alldata ...\r"
     for cgn_ctrl_var in "${cgn_ctrl[@]}" 
     do
         for extended_var in "${extended_parameter[@]}" 
@@ -174,8 +174,10 @@ function process_alldata_master {
                         do
                             for repeat_i in `seq ${repeat}` 
                             do
+                                echo -ne "[$(hostname)]Processing alldata ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
                                 copy_slave_alldata
                                 shift_time_alldata
+                                ((current_count++))
                             done
                         done    
                     done
@@ -183,7 +185,7 @@ function process_alldata_master {
             done
         done
     done
-    echo "done"
+    echo "[$(hostname)]Processing alldata ...done (${current_count} / ${total_count})                            "
 
 
 }
@@ -504,6 +506,7 @@ function create_graph_and_tex_master {
     create_time_graph_and_tex_master 
     create_ext_graph_and_tex_master 
     create_rtt_graph_and_tex_master 
+    create_cgnctrl_all_each_graph_and_tex_master 
 
     echo "[$(hostname)]Creating graph ...done (${current_count} / ${total_count})                       "
 }
@@ -554,6 +557,64 @@ function create_time_graph_and_tex_master {
         done
     done
    
+}
+
+function create_cgnctrl_all_each_graph_and_tex_master {
+   local cgn_ctrl_var  
+   local extended_var
+   local rtt1_var  
+   local rtt2_var  
+   local queue_var  
+   local repeat_i 
+   local item_var
+
+   for extended_var in "${extended_parameter[@]}" 
+   do
+        for loss_var in "${loss[@]}"
+        do
+            for rtt1_var in "${rtt1[@]}"
+            do
+                for rtt2_var in "${rtt2[@]}"
+                do
+                    check_rtt_combination || continue 
+                    for queue_var in "${queue[@]}"
+                    do
+                        for repeat_i in `seq ${repeat}` 
+                        do
+
+                            echo -ne "[$(hostname)]Creating graph ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
+                            create_all_graph_cgnctrl_tex 
+                            ((current_count++))
+                        done
+                    done
+                done
+            done
+        done
+    done
+}
+
+function create_all_graph_cgnctrl_tex {
+    local var
+    local tex_name
+   
+    
+    for var in "${item_to_create_graph[@]}" 
+    do
+        tex_name=tex/${var}_cgnctrl_${rootdir}.tex
+
+        echo "\\" >> ${tex_name} 
+        echo "\begin{center}${var} ext=${extended_var} LOSS=${loss_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms queue=${queue_var}pkt ${repeat_i}th \end{center}" >> ${tex_name} 
+
+        echo "\begin{multicols}{2}" >> ${tex_name}
+
+        for cgn_ctrl_var in "${cgn_ctrl[@]}" 
+        do
+            create_all_each_cgnctrl_graph_tex $var
+        done
+
+        echo "\end{multicols}" >> ${tex_name}
+        echo "\clearpage" >>${tex_name} 
+    done
 }
 
 function create_throughput_time_graph_plt_master {
@@ -629,7 +690,7 @@ function create_time_graph_plt_master {
         }
     }' ./${targetdir}/log/sender1_cwnd1_subflow1.dat) # hard coding
     echo 'set terminal emf enhanced "Arial, 24"
-    set terminal png size 960,720
+    set terminal png size 960,620
     set key outside
     set size ratio 0.5
     set xlabel "time[s]"
@@ -1564,7 +1625,9 @@ function set_extended_kernel_parameter {
 
 function check_sysctl_error { 
     # sysctl parameter check
-    echo "Invalid argument of sysctl parameter. are you ok?"
+    echo -en "\033[0;31m"
+    echo "^^^ Invalid argument of sysctl parameter. are you ok? ^^^"
+    echo -en "\033[0;39m"
 }
 
 function get_mptcp_version_master {
@@ -2028,7 +2091,7 @@ function run_iperf_multi_sender {
     done
 
     wait
-    echo "${cgn_ctrl_var} ext=${extended_var} LOSS=${loss_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms queue=${queue_var}pkt ${repeat_i}回目 ...done (${time_i}s / ${duration}s)           "
+    echo "${cgn_ctrl_var} ext=${extended_var} LOSS=${loss_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms queue=${queue_var}pkt ${repeat_i}回目 ...done (${time_i}s / ${duration}s)                  "
 
 }
 
@@ -3053,6 +3116,20 @@ function create_all_each_graph_tex {
 
 }
 
+function create_all_each_cgnctrl_graph_tex {
+    local targetname=$1
+    local img_name=${targetname}_${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}_${repeat_i}th.png
+
+    echo "\begin{figurehere}" >> ${tex_name}
+    echo "\begin{center}" >> ${tex_name}
+    echo '\includegraphics[width=90mm]' >> ${tex_name}
+    echo "{img/${img_name}}" >> ${tex_name} 
+    echo "\caption{${cgn_ctrl_var}}" >> ${tex_name} 
+    echo "\end{center}" >>${tex_name}
+    echo "\end{figurehere}" >>${tex_name} 
+
+}
+
 function insert_table_parameter {
     local targetdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th/
     local targetname
@@ -3852,7 +3929,10 @@ function build_tex_to_pdf {
     do
         for item_var in "${item_to_create_graph[@]}" 
         do
-            platex_dvipdfmx_link ${cgn_ctrl_var}_${item_var}_${rootdir} 
+            # Alldataがあるし、どうせ見ないからビルドしない 
+            # 使いたいならコメント外すべし
+            #platex_dvipdfmx_link ${cgn_ctrl_var}_${item_var}_${rootdir} 
+            echo "" >/dev/null
         done
 
         platex_dvipdfmx_link ${cgn_ctrl_var}_throughput_queue_${rootdir} 
@@ -3872,13 +3952,19 @@ function build_tex_to_pdf {
             platex_dvipdfmx_link ${cgn_ctrl_var}_throughput_rtt_${rootdir}_ave
             platex_dvipdfmx_link ${cgn_ctrl_var}_throughput_ext_${rootdir}_ave
         fi
-        rm -f ${cgn_ctrl_var}*.log
-        rm -f ${cgn_ctrl_var}*.dvi
-        rm -f ${cgn_ctrl_var}*.aux
+        rm -f *.log
+        rm -f *.dvi
+        rm -f *.aux
 
             
     done
     platex_dvipdfmx_link throughput_cgnctrl_${rootdir} 
+
+    for item_var in "${item_to_create_graph[@]}" 
+    do
+        platex_dvipdfmx_link ${item_var}_cgnctrl_${rootdir} 
+    done
+
     if [ ${repeat} -ne 1 ]; then
         platex_dvipdfmx_link throughput_cgnctrl_${rootdir}_ave
     fi
@@ -3976,6 +4062,7 @@ function join_header_and_tex_file {
             tex_file_name=${cgn_ctrl_var}_${item_var}_${rootdir}
             create_tex_header ${item_var}
             join_header ${tex_file_name}     
+
         done
 
         tex_file_name=${cgn_ctrl_var}_throughput_queue_${rootdir}
@@ -4017,6 +4104,14 @@ function join_header_and_tex_file {
     join_header ${tex_file_name}
     create_tex_header "Throughput Congestion Control ${repeat} repeat"
     join_header ${tex_file_name}_ave
+
+    for item_var in "${item_to_create_graph[@]}" 
+    do
+        tex_file_name=${item_var}_cgnctrl_${rootdir}
+        create_tex_header ${item_var}
+        join_header ${tex_file_name}     
+    done
+
 
     
     cd ..
