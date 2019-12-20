@@ -2256,7 +2256,7 @@ function extract_cwnd_each_flow {
             }    
         }' ./${targetdir}/log/cwnd${app_i}.dat > ./${targetdir}/log/app${app_i}_subflow.dat
 
-        sort -k2nr ./${targetdir}/log/app${app_i}_subflow.dat > ./${targetdir}/log/app${app_i}_subflow_sort.dat
+        sort -k2nr ./${targetdir}/log/app${app_i}_subflow.dat | head -n 2 | sort -k1n > ./${targetdir}/log/app${app_i}_subflow_sort.dat
         mv ./${targetdir}/log/app${app_i}_subflow_sort.dat ./${targetdir}/log/app${app_i}_subflow.dat
 
     done
