@@ -1906,12 +1906,15 @@ function echo_finish_time {
     fi
     
     time=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * $(calc_combination_number_of_rtt) * ${#loss[@]} * ${#queue[@]} * (${duration}+${process_time}+${copy_log_time}) * $repeat " | bc`
+    time=`echo "$time" | cut -d. -f1`
     ((sec=time%60, min=(time%3600)/60, hrs=time/3600))
     timestamp=$(printf "%d時間%02d分%02d秒" $hrs $min $sec)
     echo "予想終了時刻 `date --date "$time seconds"` ${timestamp} "
 
     total_time=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * $(calc_combination_number_of_rtt) * ${#loss[@]} * ${#queue[@]} * ($duration) * $repeat " | bc`
+    total_time=`echo "$total_time" | cut -d. -f1`
     total_count=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * $(calc_combination_number_of_rtt) * ${#loss[@]} * ${#queue[@]} * $repeat " | bc`
+    total_count=`echo "$total_count" | cut -d. -f1`
     total_process_time=`echo "scale=5; ${total_count} * ${process_time} " | bc`
     ((sec=total_time%60, min=(total_time%3600)/60, hrs=total_time/3600))
     total_timestamp=$(printf "%d時間%02d分%02d秒" $hrs $min $sec)
