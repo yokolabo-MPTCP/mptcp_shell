@@ -1893,7 +1893,7 @@ function echo_finish_time {
     local total_count
     local process_time
     local copy_log_time
-    
+
     if [ ${mptcp_ver} == "sptcp" ]; then
         process_time=70 # sptcp 一回の実験に必要なデータ処理時間 [s]  
         copy_log_time=28 # （仮）
@@ -1901,17 +1901,17 @@ function echo_finish_time {
         process_time=212 # mptcp 一回の実験に必要なデータ処理時間 [s] (1sender 3app)
         copy_log_time=28
     else
-        process_time=83 # mptcp 一回の実験に必要なデータ処理時間 [s] (3sender 1app)
+        process_time=174 # mptcp 一回の実験に必要なデータ処理時間 [s] (3sender 1app)
         copy_log_time=16
     fi
-
-    time=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} * (${duration}+${process_time}+${copy_log_time}) * $repeat " | bc`
+    
+    time=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * $(calc_combination_number_of_rtt) * ${#loss[@]} * ${#queue[@]} * (${duration}+${process_time}+${copy_log_time}) * $repeat " | bc`
     ((sec=time%60, min=(time%3600)/60, hrs=time/3600))
     timestamp=$(printf "%d時間%02d分%02d秒" $hrs $min $sec)
     echo "予想終了時刻 `date --date "$time seconds"` ${timestamp} "
 
-    total_time=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} * ($duration) * $repeat " | bc`
-    total_count=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} * $repeat " | bc`
+    total_time=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * $(calc_combination_number_of_rtt) * ${#loss[@]} * ${#queue[@]} * ($duration) * $repeat " | bc`
+    total_count=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * $(calc_combination_number_of_rtt) * ${#loss[@]} * ${#queue[@]} * $repeat " | bc`
     total_process_time=`echo "scale=5; ${total_count} * ${process_time} " | bc`
     ((sec=total_time%60, min=(total_time%3600)/60, hrs=total_time/3600))
     total_timestamp=$(printf "%d時間%02d分%02d秒" $hrs $min $sec)
