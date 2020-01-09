@@ -1942,8 +1942,8 @@ function echo_data_byte {
         normal_one_data=0.2367
     fi
 
-    compressed_byte=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} *${compressed_one_data} * $repeat " | bc`
-    normal_byte=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * ${#rtt1[@]} * ${#loss[@]} * ${#queue[@]} *${normal_one_data} * $repeat " | bc`
+    compressed_byte=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * $(calc_combination_number_of_rtt) * ${#loss[@]} * ${#queue[@]} *${compressed_one_data} * $repeat " | bc`
+    normal_byte=`echo "scale=5; ${#extended_parameter[@]} * ${#cgn_ctrl[@]} * $(calc_combination_number_of_rtt) * ${#loss[@]} * ${#queue[@]} *${normal_one_data} * $repeat " | bc`
     result=`echo "scale=5; ${compressed_byte} < 1 " | bc`
     if [ ${result} = "1" ]; then
         
