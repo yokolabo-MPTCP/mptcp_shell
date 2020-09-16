@@ -2619,12 +2619,31 @@ function process_throughput_data {
 
     for app_i in `seq ${app}` 
     do
-        awk -F "," 'END{
-           printf("%s\n",$9 / 1000000); 
+       # awk -F "," 'END{
+        #   printf("%s\n",$9 / 1000000); 
+        #}' ./${targetdir}/${repeat_i}th/throughput/app${app_i}.dat >> ./${targetdir}/${repeat_i}th/throughput/app${app_i}_.dat
+	
+	awk -F "," 'BEGIN{
+			  sum=0
+			 }
+			 {if(NR>=26 && NR<76)
+                                 {sum = sum + ($9 / 1000000)}
+			 }
+	END{
+           printf("%s\n", sum / 50); 
         }' ./${targetdir}/${repeat_i}th/throughput/app${app_i}.dat >> ./${targetdir}/${repeat_i}th/throughput/app${app_i}_.dat
 
-        awk -F "," 'END{
-           printf("%s\n",$9 / 1000000); 
+        #awk -F "," 'END{
+        #   printf("%s\n",$9 / 1000000); 
+        #}' ./${targetdir}/${repeat_i}th/throughput/app${app_i}.dat >> ./${targetdir}/ave/throughput/app${app_i}.dat
+	awk -F "," 'BEGIN{
+			  sum=0
+			 }
+			 {if(NR>=26 && NR<76)
+                                 {sum = sum + ($9 / 1000000)}
+			 }
+	END{
+           printf("%s\n", sum / 50);
         }' ./${targetdir}/${repeat_i}th/throughput/app${app_i}.dat >> ./${targetdir}/ave/throughput/app${app_i}.dat
        
         process_throughput_data_interval
