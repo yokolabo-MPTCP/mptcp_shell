@@ -734,6 +734,14 @@ function create_throughput_queue_graph_plt_master {
     local queue_var
     local yrangemax
     local sender_i
+    local queue_i
+    local max_min
+    local sum=()
+    local sq_sum=()
+    local ave
+    local var
+    local label_position
+
 
     yrangemax=$(set_yrange_max)
 
@@ -762,6 +770,46 @@ function create_throughput_queue_graph_plt_master {
 
         }' ./${targetdir}/${repeat_i}th/graphdata.dat > ./${targetdir}/${repeat_i}th/graphdata_total.dat
 
+        for queue_i in `seq ${#queue[@]}`
+        do
+            max_min=$(awk -v num=${queue_i} '{
+                     if(NR==num){
+                        for (i=2;i<=NF;i++){
+                        if (i == 2){
+                              max = $i;
+                              min = $i;
+                        }
+                        else{
+                              if ($i>max) {max=$i}
+                              if ($i<min) {min=$i}
+                        }
+                        }
+                     }
+                      }END{
+                     print max-min
+                      }' ./${targetdir}/${repeat_i}th/graphdata.dat)
+
+            if [ ${repeat_i} == 1 ]; then
+                sum[$queue_i]=${max_min}
+                sq_sum[$queue_i]=`echo "scale=5; ${max_min}^2" | bc`
+            else
+                sum[$queue_i]=`echo "scale=5; ${sum[$queue_i]} + ${max_min}" | bc`
+                sq_sum[$queue_i]=`echo "scale=5; ${sq_sum[$queue_i]} + ${max_min}^2" | bc`
+            fi
+        done
+
+        fairness=($(awk '{
+                judge="fair"
+                ave=$5 / 3
+                for(i = 2; i <= NF-1; i++){
+                    if(ave*1.1 < $i || ave*0.9 >$i){
+                        judge="unfair"
+                        break
+                    }
+                }
+                print judge
+               }' ./${targetdir}/${repeat_i}th/graphdata_total.dat))
+
         echo 'set terminal emf enhanced "Arial, 24"
         set terminal png size 960,720
         set xlabel "queue"
@@ -773,6 +821,17 @@ function create_throughput_queue_graph_plt_master {
         set datafile separator " " ' > ./${targetdir}/${repeat_i}th/plot.plt
         echo "set title \"throughput ${targetdir} ${repeat_i}th\"" >> ./${targetdir}/${repeat_i}th/plot.plt 
         echo "set yrange [0:${yrangemax}]" >> ./${targetdir}/${repeat_i}th/plot.plt
+
+        for i in `seq ${#queue[@]}`
+        do
+       	    label_position=`echo "scale=3; 0.05 + (1/${#queue[@]})*(${i}-1)" | bc`
+            if [ ${fairness[$i-1]} == "fair" ]; then
+                echo "set label ${i} at screen ${label_position},0.13 \"${queue[$i-1]}\\n${fairness[$i-1]}\" font \"Arial, 15\" textcolor rgb \"blue\"" >> ./${targetdir}/${repeat_i}th/plot.plt
+            else
+                echo "set label ${i} at screen ${label_position},0.13 \"${queue[$i-1]}\\n${fairness[$i-1]}\" font \"Arial, 15\" textcolor rgb \"red\"" >> ./${targetdir}/${repeat_i}th/plot.plt
+            fi
+        done
+
         echo "set output \"throughput_${targetdir}_${repeat_i}th.png\"" >> ./${targetdir}/${repeat_i}th/plot.plt
 
         echo -n "plot " >> ./${targetdir}/${repeat_i}th/plot.plt
@@ -833,6 +892,14 @@ function create_throughput_queue_graph_plt_master {
     echo "set title \"throughput ${targetdir} ${repeat_i} times average \"" >> ./${targetdir}/ave/plot.plt 
     echo "set yrange [0:${yrangemax}]" >> ./${targetdir}/ave/plot.plt
     echo "set output \"throughput_${targetdir}_ave.png\"" >> ./${targetdir}/ave/plot.plt
+
+    for queue_i in `seq ${#queue[@]}`
+    do
+       	ave=`echo "scale=3; ${sum[$queue_i]}/${repeat}" | bc`
+       	var=`echo "scale=3; ${sq_sum[$queue_i]}/${repeat} - ${ave}^2" | bc`
+       	label_position=`echo "scale=3; 0.05 + (1/${#queue[@]})*(${queue_i}-1)" | bc`
+       	echo "set label ${queue_i} at screen ${label_position},0.13 \"${queue[$queue_i-1]}\\nave:${ave}\\nvar:${var}\" font \"Arial, 15\"" >> ./${targetdir}/ave/plot.plt
+    done
 
     echo -n "plot " >> ./${targetdir}/ave/plot.plt
 
@@ -2619,31 +2686,31 @@ function process_throughput_data {
 
     for app_i in `seq ${app}` 
     do
-       # awk -F "," 'END{
+        #awk -F "," 'END{
         #   printf("%s\n",$9 / 1000000); 
         #}' ./${targetdir}/${repeat_i}th/throughput/app${app_i}.dat >> ./${targetdir}/${repeat_i}th/throughput/app${app_i}_.dat
 	
-	awk -F "," 'BEGIN{
-			  sum=0
-			 }
-			 {if(NR>=26 && NR<76)
-                                 {sum = sum + ($9 / 1000000)}
-			 }
-	END{
-           printf("%s\n", sum / 50); 
+	    awk -F "," 'BEGIN{
+		  	  sum=0
+		    }
+		    {if(NR>=26 && NR<76)
+                                {sum = sum + ($9 / 1000000)}
+		    }
+	    END{
+            printf("%s\n", sum / 50); 
         }' ./${targetdir}/${repeat_i}th/throughput/app${app_i}.dat >> ./${targetdir}/${repeat_i}th/throughput/app${app_i}_.dat
 
-        #awk -F "," 'END{
-        #   printf("%s\n",$9 / 1000000); 
-        #}' ./${targetdir}/${repeat_i}th/throughput/app${app_i}.dat >> ./${targetdir}/ave/throughput/app${app_i}.dat
-	awk -F "," 'BEGIN{
+    #    awk -F "," 'END{
+    #       printf("%s\n",$9 / 1000000); 
+    #    }' ./${targetdir}/${repeat_i}th/throughput/app${app_i}.dat >> ./${targetdir}/ave/throughput/app${app_i}.dat
+	    awk -F "," 'BEGIN{
 			  sum=0
 			 }
 			 {if(NR>=26 && NR<76)
-                                 {sum = sum + ($9 / 1000000)}
+                                {sum = sum + ($9 / 1000000)}
 			 }
-	END{
-           printf("%s\n", sum / 50);
+	    END{
+            printf("%s\n", sum / 50);
         }' ./${targetdir}/${repeat_i}th/throughput/app${app_i}.dat >> ./${targetdir}/ave/throughput/app${app_i}.dat
        
         process_throughput_data_interval
