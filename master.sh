@@ -75,7 +75,11 @@ do
 
                             write_and_send_now_parameter
                             send_command "clean_log_sender_and_receiver" "bg"
-                            run_iperf_multi_sender
+                            #start 1-2-3
+                            #run_iperf_multi_sender
+                            
+                            #start 2-1&3
+                            run_iperf_multi_sender_2_13
                             
                             send_command "format_and_copy_log"
                         done

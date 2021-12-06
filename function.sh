@@ -176,7 +176,8 @@ function process_alldata_master {
                             do
                                 echo -ne "[$(hostname)]Processing alldata ...$(calc_progress_percent)% (${current_count} / ${total_count})\r"
                                 copy_slave_alldata
-                                shift_time_alldata
+                                #shift_time_alldata
+                                shift_time_alldata_2_13
                                 ((current_count++))
                             done
                         done    
@@ -244,6 +245,61 @@ function shift_time_alldata {
 
    
 }
+function shift_time_alldata_2_13 {
+    local target_ip
+    local sender_i
+    local app_i
+    local targetmasterdir
+    local targetdir
+    local count_item
+    local time_adjust
+
+    #echo -ne "[$(hostname)]Shifting time ... \r"
+
+    for sender_i in `seq ${sender_num}` 
+    do
+        (
+            targetmasterdir=${cgn_ctrl_var}_ext=${extended_var}_rtt1=${rtt1_var}_rtt2=${rtt2_var}_loss=${loss_var}_queue=${queue_var}/${repeat_i}th/
+            for app_i in `seq ${app}` 
+            do
+                for subflow_i in `seq ${subflownum}` 
+                do
+                    if [ $sender_i != "2" ]; then
+                        time_adjust=`echo "scale=5; ($rtt1_var / 1000) * 3 " | bc | xargs printf %.5f`
+                        awk -v delay=${time_adjust} '{
+                           printf ("%f ",$1 + delay);
+                           for(i=2;i<=NF;i++){
+                               printf $i" ";
+                           }
+                           printf("\n");
+
+                        }' ./${targetmasterdir}/log/sender${sender_i}_cwnd${app_i}_subflow${subflow_i}.dat > ./${targetmasterdir}/log/sender${sender_i}_cwnd${app_i}_subflow${subflow_i}_tmp.dat
+                        mv -f ./${targetmasterdir}/log/sender${sender_i}_cwnd${app_i}_subflow${subflow_i}_tmp.dat ./${targetmasterdir}/log/sender${sender_i}_cwnd${app_i}_subflow${subflow_i}.dat
+                    fi
+                done
+
+                if [ $sender_i != "2" ]; then
+                    time_adjust=`echo "scale=5; ($rtt1_var / 1000) * 3 " | bc | xargs printf %.5f`
+                    awk -v delay=${time_adjust} '{
+                       printf ("%f ",$1 + delay);
+                       for(i=2;i<=NF;i++){
+                           printf $i" ";
+                       }
+                       printf("\n");
+
+                    }' ./${targetmasterdir}/throughput/sender${sender_i}_app${app_i}_time.dat > ./${targetmasterdir}/throughput/sender${sender_i}_app${app_i}_tmp.dat
+                    mv -f ./${targetmasterdir}/throughput/sender${sender_i}_app${app_i}_tmp.dat ./${targetmasterdir}/throughput/sender${sender_i}_app${app_i}_time.dat
+                fi
+            done
+        ) &
+    done
+
+    wait
+    #echo  "[$(hostname)]Shifting time ... done"
+
+   
+}
+
 function copy_slave_alldata {
     local target_ip
     local sender_i
@@ -798,17 +854,45 @@ function create_throughput_queue_graph_plt_master {
             fi
         done
 
-        fairness=($(awk '{
-                judge="fair"
-                ave=$5 / 3
+        #fairness=($(awk '{
+        #        judge="fair"
+        #        ave=$5 / 3
+        #        for(i = 2; i <= NF-1; i++){
+        #            if(ave*1.1 < $i || ave*0.9 >$i){
+        #                judge="unfair"
+        #                break
+        #            }
+        #        }
+        #        print judge
+        #       }' ./${targetdir}/${repeat_i}th/graphdata_total.dat))
+
+        origin_fairness=($(awk -v snum=${sender_num} '{
+                sq_sum = 0
                 for(i = 2; i <= NF-1; i++){
-                    if(ave*1.1 < $i || ave*0.9 >$i){
-                        judge="unfair"
-                        break
-                    }
+                    sq_sum += $i^2;
                 }
-                print judge
+                test = $NF^2 / (snum * sq_sum);
+                print test
                }' ./${targetdir}/${repeat_i}th/graphdata_total.dat))
+
+        #arrange_fairness=($(awk -v snum=${sender_num} '{
+        #        sq_sum = 0
+        #        for(i = 2; i <= NF-1; i++){
+        #            sq_sum += $i^2;
+        #        }
+        #        test = $NF^2 / (snum * sq_sum);
+        #        test = (test-1/snum)/(1-1/snum)
+        #        print test
+        #       }' ./${targetdir}/${repeat_i}th/graphdata_total.dat))
+
+
+        if [ -f ./${targetdir}/ave/fairness_index.dat ] && [ ${repeat_i} = 1]; then
+            echo "${repeat_i}th ${origin_fairness[@]}" > ./${targetdir}/ave/original_fairness_index_${cgn_ctrl_var}_rtt${rtt1_var}ms.dat
+           # echo "${repeat_i}th ${arrange_fairness[@]}" > ./${targetdir}/ave/arrange_fairness_index_${cgn_ctrl_var}_rtt${rtt1_var}ms.dat
+        else
+            echo "${repeat_i}th ${origin_fairness[@]}" >> ./${targetdir}/ave/original_fairness_index_${cgn_ctrl_var}_rtt${rtt1_var}ms.dat
+           # echo "${repeat_i}th ${arrange_fairness[@]}" >> ./${targetdir}/ave/arrange_fairness_index_${cgn_ctrl_var}_rtt${rtt1_var}ms.dat
+        fi
 
         echo 'set terminal emf enhanced "Arial, 24"
         set terminal png size 960,720
@@ -824,12 +908,10 @@ function create_throughput_queue_graph_plt_master {
 
         for i in `seq ${#queue[@]}`
         do
-       	    label_position=`echo "scale=3; 0.05 + (1/${#queue[@]})*(${i}-1)" | bc`
-            if [ ${fairness[$i-1]} == "fair" ]; then
-                echo "set label ${i} at screen ${label_position},0.13 \"${queue[$i-1]}\\n${fairness[$i-1]}\" font \"Arial, 15\" textcolor rgb \"blue\"" >> ./${targetdir}/${repeat_i}th/plot.plt
-            else
-                echo "set label ${i} at screen ${label_position},0.13 \"${queue[$i-1]}\\n${fairness[$i-1]}\" font \"Arial, 15\" textcolor rgb \"red\"" >> ./${targetdir}/${repeat_i}th/plot.plt
-            fi
+       	    label_position=`echo "scale=5; 0.02 + (1/${#queue[@]})*(${i}-1)" | bc`
+            j=${i}+20
+            echo "set label ${i} at screen ${label_position},0.17 \"${queue[$i-1]}\\n${origin_fairness[$i-1]}\" font \"Arial, 13\" textcolor rgb \"blue\"" >> ./${targetdir}/${repeat_i}th/plot.plt
+            #echo "set label ${j} at screen ${label_position},0.10 \"${queue[$i-1]}\\n${arrange_fairness[$i-1]}\" font \"Arial, 13\" textcolor rgb \"red\"" >> ./${targetdir}/${repeat_i}th/plot.plt
         done
 
         echo "set output \"throughput_${targetdir}_${repeat_i}th.png\"" >> ./${targetdir}/${repeat_i}th/plot.plt
@@ -856,7 +938,22 @@ function create_throughput_queue_graph_plt_master {
                  echo -n " , \"./graphdata_total.dat\" using $n:xtic(1) with linespoints linewidth 4 title \"Total\" " >> ./${targetdir}/${repeat_i}th/plot.plt
             fi
         done
-    done 
+    done
+
+    fairness_ave=($(awk -v rnum=${repeat} '{
+        for(i = 2; i<=NF; i++){
+            fsum[i-2] += $i;
+        }
+       }
+       END{
+        for(j = 0; j< i-2; j++){
+            average = fsum[j] / rnum;
+            print average
+       }
+      }' ./${targetdir}/ave/original_fairness_index_${cgn_ctrl_var}_rtt${rtt1_var}ms.dat))
+
+    echo "ave ${fairness_ave[@]}" >> ./${targetdir}/ave/original_fairness_index_${cgn_ctrl_var}_rtt${rtt1_var}ms.dat
+
 
     for sender_i in `seq ${sender_num}` 
     do
@@ -2149,6 +2246,48 @@ function run_iperf_multi_sender {
 			sleep $sender_delay
 		fi
     done
+    # sender_delayが極端になると、最後のsenderの残り実験時間を表示する
+    # 例 sender_delayが10秒でsender数が2なら、最初の10秒は残り時間が表示されず、最後の10秒のみ表示される
+    for time_i in `seq ${duration}` 
+    do
+        total_time_i=`echo "scale=1; ${total_time_i} - 1 " | bc`
+        ((sec=total_time_i%60, min=(total_time_i%3600)/60, hrs=total_time_i/3600))
+        timestamp=$(printf "%d時間%02d分%02d秒" $hrs $min $sec)
+        echo -ne "${cgn_ctrl_var} ext=${extended_var} LOSS=${loss_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms queue=${queue_var}pkt ${repeat_i}回目 ...(${time_i}s / ${duration}s) ($timestamp) \r"
+        sleep 1
+    done
+
+    wait
+    echo "${cgn_ctrl_var} ext=${extended_var} LOSS=${loss_var} RTT1=${rtt1_var}ms RTT2=${rtt2_var}ms queue=${queue_var}pkt ${repeat_i}回目 ...done (${time_i}s / ${duration}s)                  "
+
+}
+
+function run_iperf_multi_sender_2_13 {
+    local base_duration
+    local delay_time
+
+    local sender_i
+    local send_command="run_iperf"
+    local time_i
+    local sec
+    local min
+    local hrs
+    local timestamp
+
+
+    delay_time=`echo "scale=5; ($rtt1_var / 1000) * 3" | bc | xargs printf %.5f`
+    base_duration=`echo "scale=5; $duration + ($sender_num - 1) * $delay_time " | bc`
+
+    #target_ip="sender${sender_i}_ip"
+    ssh root@${sender2_ip} "${senderdir}/slave.sh ${send_command} ${base_duration}" &
+    sleep $delay_time
+
+    base_duration=`echo "scale=5; $duration + ($sender_num - 2) * $delay_time " | bc`
+
+    #target_ip="sender${sender_i}_ip"
+    ssh root@${sender1_ip} "${senderdir}/slave.sh ${send_command} ${base_duration}" &
+    ssh root@${sender3_ip} "${senderdir}/slave.sh ${send_command} ${base_duration}" &
+
     # sender_delayが極端になると、最後のsenderの残り実験時間を表示する
     # 例 sender_delayが10秒でsender数が2なら、最初の10秒は残り時間が表示されず、最後の10秒のみ表示される
     for time_i in `seq ${duration}` 
